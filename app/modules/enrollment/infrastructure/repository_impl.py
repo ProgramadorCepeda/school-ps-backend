@@ -1,0 +1,303 @@
+from datetime import datetime
+
+from sqlmodel import Session, select
+
+from app.modules.enrollment.domain.entities import (
+    ComplementaryDetail,
+    StudentInfo,
+)
+from app.modules.enrollment.domain.repositories import EnrollmentRepository
+from app.modules.enrollment.infrastructure.models import (
+    Complementario,
+    DetalleMatricula,
+    Estudiante,
+    Grado,
+    Matricula,
+    Pago,
+    PagoDetalle,
+    ParametrizarMatricula,
+    ParametrizarPension,
+)
+
+
+class SQLEnrollmentRepository(EnrollmentRepository):
+    """Implementación concreta del repositorio usando SQLModel/PostgreSQL."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    # === Consulta ===
+
+    def get_student_by_id(self, student_id: int) -> StudentInfo | None:
+        statement = (
+            select(Estudiante, Grado)
+            .join(Grado, Estudiante.grado_id == Grado.id)
+            .where(Estudiante.id == student_id)
+        )
+        result = self._session.exec(statement).first()
+        if result is None:
+            return None
+
+        estudiante, grado = result
+        return StudentInfo(
+            id=estudiante.id,
+            nombre=estudiante.nombre,
+            documento=estudiante.documento,
+            grado_id=grado.id,
+            grado_nombre=grado.nombre,
+            activo=estudiante.activo,
+        )
+
+    def get_enrollment_base_cost(self, grade_id: int, year: int) -> int | None:
+        statement = select(ParametrizarMatricula).where(
+            ParametrizarMatricula.grado_id == grade_id,
+            ParametrizarMatricula.anio == year,
+        )
+        result = self._session.exec(statement).first()
+        return result.valor if result else None
+
+    def get_enrollment_details(
+        self, student_id: int, year: int
+    ) -> tuple[int | None, bool, list[ComplementaryDetail], int, int]:
+        # Buscar la matrícula del estudiante para el año dado
+        statement = (
+            select(Matricula)
+            .join(
+                ParametrizarMatricula,
+                Matricula.para_matricula_id == ParametrizarMatricula.id,
+            )
+            .where(
+                Matricula.estudiante_id == student_id,
+                ParametrizarMatricula.anio == year,
+            )
+        )
+        matricula = self._session.exec(statement).first()
+
+        if matricula is None:
+            return None, False, [], 0, 0
+
+        # Obtener detalles con complementarios
+        detail_statement = (
+            select(DetalleMatricula, Complementario)
+            .join(
+                Complementario,
+                DetalleMatricula.complementario_id == Complementario.id,
+            )
+            .where(DetalleMatricula.matricula_id == matricula.id)
+        )
+        details = self._session.exec(detail_statement).all()
+
+        complementary_items = [
+            ComplementaryDetail(
+                complementario_id=comp.id,
+                tipo_complementario=comp.tipo_complementario,
+                valor=comp.valor,
+                descuento=det.descuento,
+                valor_completo=det.valor_completo,
+                valor_pendiente=det.valor_pendiente,
+            )
+            for det, comp in details
+        ]
+
+        return (
+            matricula.id,
+            matricula.estado_matricula,
+            complementary_items,
+            matricula.valor_pendiente_base,
+            matricula.valor_pendiente_pension,
+        )
+
+    def get_first_month_pension_cost(
+        self, grade_id: int, year: int
+    ) -> int | None:
+        statement = select(ParametrizarPension).where(
+            ParametrizarPension.grado_id == grade_id,
+            ParametrizarPension.anio == year,
+        )
+        result = self._session.exec(statement).first()
+        return result.valor if result else None
+
+    # === Registro de matrícula ===
+
+    def get_param_matricula_id(self, grade_id: int, year: int) -> int | None:
+        statement = select(ParametrizarMatricula).where(
+            ParametrizarMatricula.grado_id == grade_id,
+            ParametrizarMatricula.anio == year,
+        )
+        result = self._session.exec(statement).first()
+        return result.id if result else None
+
+    def student_has_enrollment(self, student_id: int, year: int) -> bool:
+        statement = (
+            select(Matricula)
+            .join(
+                ParametrizarMatricula,
+                Matricula.para_matricula_id == ParametrizarMatricula.id,
+            )
+            .where(
+                Matricula.estudiante_id == student_id,
+                ParametrizarMatricula.anio == year,
+            )
+        )
+        return self._session.exec(statement).first() is not None
+
+    def get_active_complementaries(
+        self, year: int
+    ) -> list[tuple[int, str, int]]:
+        statement = select(Complementario).where(
+            Complementario.anio == year,
+            Complementario.uso_matricula == True,  # noqa: E712
+            Complementario.estado_complemento == "Activo",
+        )
+        results = self._session.exec(statement).all()
+        return [
+            (comp.id, comp.tipo_complementario, comp.valor)
+            for comp in results
+        ]
+
+    def create_enrollment(
+        self,
+        para_matricula_id: int,
+        student_id: int,
+        period_id: int,
+        valor_total: int,
+        base_cost: int,
+        pension_cost: int,
+        complementary_details: list[tuple[int, int]],
+    ) -> int:
+        matricula = Matricula(
+            para_matricula_id=para_matricula_id,
+            estudiante_id=student_id,
+            periodo_id=period_id,
+            valor_total=valor_total,
+            fecha_registro=datetime.now(),
+            estado_matricula=False,
+            valor_pendiente_base=base_cost,
+            valor_pendiente_pension=pension_cost,
+        )
+        self._session.add(matricula)
+        self._session.flush()
+
+        for comp_id, valor in complementary_details:
+            detalle = DetalleMatricula(
+                matricula_id=matricula.id,
+                complementario_id=comp_id,
+                cuota=1,
+                descuento=0,
+                valor_completo=valor,
+                valor_pendiente=valor,
+                fecha_abono=datetime.now(),
+            )
+            self._session.add(detalle)
+
+        self._session.commit()
+        return matricula.id
+
+    # === Pagos ===
+
+    def get_enrollment_by_id(
+        self, matricula_id: int
+    ) -> tuple | None:
+        statement = select(Matricula).where(Matricula.id == matricula_id)
+        mat = self._session.exec(statement).first()
+        if mat is None:
+            return None
+        return (
+            mat.id,
+            mat.estudiante_id,
+            mat.valor_total,
+            mat.estado_matricula,
+            mat.valor_pendiente_base,
+            mat.valor_pendiente_pension,
+            mat.para_matricula_id,
+        )
+
+    def get_enrollment_complementary_details(
+        self, matricula_id: int
+    ) -> list[tuple[int, int, str, int]]:
+        statement = (
+            select(DetalleMatricula, Complementario)
+            .join(
+                Complementario,
+                DetalleMatricula.complementario_id == Complementario.id,
+            )
+            .where(DetalleMatricula.matricula_id == matricula_id)
+        )
+        results = self._session.exec(statement).all()
+        return [
+            (det.id, comp.id, comp.tipo_complementario, det.valor_pendiente)
+            for det, comp in results
+        ]
+
+    def validate_talonario_unique(self, codigo: str) -> bool:
+        statement = select(Pago).where(Pago.codigo_talonario == codigo)
+        return self._session.exec(statement).first() is None
+
+    def create_payment(
+        self,
+        matricula_id: int,
+        codigo_talonario: str,
+        monto_total: int,
+        modo_pago: str,
+        observacion: str | None,
+        distribuciones: list[tuple[str, int | None, int]],
+    ) -> int:
+        pago = Pago(
+            matricula_id=matricula_id,
+            codigo_talonario=codigo_talonario,
+            monto_total=monto_total,
+            modo_pago=modo_pago,
+            fecha_pago=datetime.now(),
+            observacion=observacion,
+        )
+        self._session.add(pago)
+        self._session.flush()
+
+        for concepto, comp_id, monto in distribuciones:
+            detalle = PagoDetalle(
+                pago_id=pago.id,
+                concepto=concepto,
+                complementario_id=comp_id,
+                monto_aplicado=monto,
+            )
+            self._session.add(detalle)
+
+        self._session.commit()
+        return pago.id
+
+    def update_pending_base(self, matricula_id: int, new_pending: int) -> None:
+        statement = select(Matricula).where(Matricula.id == matricula_id)
+        mat = self._session.exec(statement).one()
+        mat.valor_pendiente_base = new_pending
+        self._session.add(mat)
+        self._session.flush()
+
+    def update_pending_pension(
+        self, matricula_id: int, new_pending: int
+    ) -> None:
+        statement = select(Matricula).where(Matricula.id == matricula_id)
+        mat = self._session.exec(statement).one()
+        mat.valor_pendiente_pension = new_pending
+        self._session.add(mat)
+        self._session.flush()
+
+    def update_complementary_pending(
+        self, matricula_id: int, complementario_id: int, new_pending: int
+    ) -> None:
+        statement = select(DetalleMatricula).where(
+            DetalleMatricula.matricula_id == matricula_id,
+            DetalleMatricula.complementario_id == complementario_id,
+        )
+        det = self._session.exec(statement).one()
+        det.valor_pendiente = new_pending
+        self._session.add(det)
+        self._session.flush()
+
+    def update_enrollment_status(
+        self, matricula_id: int, status: bool
+    ) -> None:
+        statement = select(Matricula).where(Matricula.id == matricula_id)
+        mat = self._session.exec(statement).one()
+        mat.estado_matricula = status
+        self._session.add(mat)
+        self._session.flush()

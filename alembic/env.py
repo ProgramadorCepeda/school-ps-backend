@@ -5,6 +5,7 @@ from sqlmodel import SQLModel
 
 from alembic import context
 from app.modules.inventory.infrastructure import models as inventory  # noqa: F401
+from app.modules.enrollment.infrastructure import models as enrollment  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
