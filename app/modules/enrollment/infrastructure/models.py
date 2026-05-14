@@ -31,6 +31,13 @@ class Estudiante(Base, table=True):
     fecha_activo: datetime | None = Field(default=None)
 
 
+class Docente(Base, table=True):
+    nombre: str = Field(max_length=50)
+    documento: str = Field(max_length=20)
+    estado: bool = Field(default=True)
+    asignatura: str = Field(max_length=100)
+
+
 class Periodo(Base, table=True):
     """Periodo electivo académico."""
 
