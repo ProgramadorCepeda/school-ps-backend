@@ -1,26 +1,28 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlmodel import Session
 
 from app.core.db import get_session
 from app.modules.enrollment.application.get_enrollment_balance import (
     GetEnrollmentBalance,
 )
-from app.modules.enrollment.application.process_payment import (
-    ProcessAutoPayment,
-    ProcessDirectedPayment,
-)
+from app.modules.enrollment.application.process_payment import ProcessDirectedPayment
+from app.modules.enrollment.application.modify_enrollment import ModifyEnrollment
 from app.modules.enrollment.application.register_enrollment import (
     RegisterEnrollment,
 )
+from app.modules.enrollment.application.mass_enrollment import MassEnrollmentService
+from app.modules.enrollment.domain.service import EnrollmentService
 from app.modules.enrollment.infrastructure.repository_impl import (
     SQLEnrollmentRepository,
 )
 from app.modules.enrollment.schemas.request import (
-    AutoPaymentRequest,
     DirectedPaymentRequest,
     RegisterEnrollmentRequest,
+    ModifyEnrollmentRequest,
+    ComplementaryCreateRequest,
+    AssignComplementaryRequest,
 )
 from app.modules.enrollment.schemas.response import (
     ComplementaryItemResponse,
@@ -81,6 +83,7 @@ async def get_enrollment_balance(
         costo_base_matricula=balance.enrollment_base_cost,
         complementarios=[
             ComplementaryItemResponse(
+                detalle_id=item.detalle_id,
                 complementario_id=item.complementario_id,
                 tipo_complementario=item.tipo_complementario,
                 valor=item.valor,
@@ -91,14 +94,12 @@ async def get_enrollment_balance(
             for item in balance.complementary_items
         ],
         total_complementarios=balance.complementary_total,
-        primer_mes_pension=balance.first_month_pension,
         costo_total=balance.total_cost,
         total_pagado=balance.total_paid,
         total_pendiente=balance.total_pending,
         estado_matricula=balance.enrollment_status,
         matricula_registrada=balance.enrollment_exists,
         pendiente_base=balance.pending_base,
-        pendiente_pension=balance.pending_pension,
     )
 
 
@@ -133,9 +134,9 @@ async def register_enrollment(
         valor_total=result.valor_total,
         costo_base=result.costo_base,
         total_complementarios=result.total_complementarios,
-        primer_mes_pension=result.primer_mes_pension,
         complementarios=[
             ComplementaryItemResponse(
+                detalle_id=c.detalle_id,
                 complementario_id=c.complementario_id,
                 tipo_complementario=c.tipo_complementario,
                 valor=c.valor,
@@ -152,70 +153,29 @@ async def register_enrollment(
     )
 
 
-@router.post(
-    "/payments/auto",
-    response_model=PaymentResultResponse,
-    status_code=201,
-    summary="Pago con auto-distribución",
+@router.put(
+    "/students/{matricula_id}/matricula",
+    status_code=200,
+    summary="Modificar matrícula en tiempo real",
     description=(
-        "Registra un pago y distribuye el monto automáticamente en orden "
-        "de prioridad: matrícula base → complementarios → pensión. "
-        "Si el monto sobra después de completar un concepto, se aplica "
-        "automáticamente al siguiente. Requiere código de talonario físico."
+        "Permite al administrador sobrescribir o aplicar descuentos al costo base, "
+        "pensión o complementarios de una matrícula en tiempo real."
     ),
 )
-async def auto_payment(
-    request: AutoPaymentRequest,
+async def modify_enrollment(
+    matricula_id: int,
+    request: ModifyEnrollmentRequest,
     session: Session = Depends(get_session),
-) -> PaymentResultResponse:
+) -> dict:
     repository = SQLEnrollmentRepository(session)
-    use_case = ProcessAutoPayment(repository)
+    use_case = ModifyEnrollment(repository)
 
     try:
-        result = use_case.execute(
-            request.matricula_id,
-            request.monto,
-            request.codigo_talonario,
-            request.observacion,
-        )
+        result = use_case.execute(matricula_id, request)
     except ValueError as e:
-        error_msg = str(e)
-        if "talonario" in error_msg.lower():
-            raise HTTPException(status_code=409, detail=error_msg) from e
-        raise HTTPException(status_code=400, detail=error_msg) from e
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
-    if result.matricula_pagada:
-        mensaje = "Matrícula completamente pagada!"
-    elif result.monto_aplicado < result.monto_total:
-        mensaje = (
-            f"Pago registrado. Se aplicaron ${result.monto_aplicado:,} de "
-            f"${result.monto_total:,}. El excedente de "
-            f"${result.monto_total - result.monto_aplicado:,} no se aplicó "
-            f"porque no hay más conceptos pendientes."
-        )
-    else:
-        mensaje = (
-            f"Pago parcial registrado. Saldo pendiente: "
-            f"${result.saldo_restante_matricula:,}"
-        )
-
-    return PaymentResultResponse(
-        pago_id=result.pago_id,
-        codigo_talonario=result.codigo_talonario,
-        monto_total=result.monto_total,
-        monto_aplicado=result.monto_aplicado,
-        distribuciones=[
-            PaymentDistributionResponse(
-                concepto=d.concepto,
-                complementario_id=d.complementario_id,
-                monto_aplicado=d.monto_aplicado,
-            )
-            for d in result.distribuciones
-        ],
-        saldo_restante=result.saldo_restante_matricula,
-        matricula_pagada=result.matricula_pagada,
-        mensaje=mensaje,
-    )
+    return result
 
 
 @router.post(
@@ -282,3 +242,86 @@ async def directed_payment(
         matricula_pagada=result.matricula_pagada,
         mensaje=mensaje,
     )
+
+
+@router.post(
+    "/register/massive/csv",
+    status_code=201,
+    summary="Registrar matrículas masivamente vía CSV",
+)
+async def register_massive_csv(
+    periodo_id: int,
+    anio: int,
+    file: UploadFile = File(...),
+    session: Session = Depends(get_session),
+):
+    repository = SQLEnrollmentRepository(session)
+    enrollment_service = EnrollmentService(repository)
+    mass_service = MassEnrollmentService(session, enrollment_service)
+    
+    content = await file.read()
+    return mass_service.process_csv_file(content, periodo_id, anio)
+
+
+@router.post(
+    "/register/massive/txt",
+    status_code=201,
+    summary="Registrar matrículas masivamente vía TXT",
+)
+async def register_massive_txt(
+    periodo_id: int,
+    anio: int,
+    file: UploadFile = File(...),
+    session: Session = Depends(get_session),
+):
+    repository = SQLEnrollmentRepository(session)
+    enrollment_service = EnrollmentService(repository)
+    mass_service = MassEnrollmentService(session, enrollment_service)
+    
+    content = await file.read()
+    return mass_service.process_txt_file(content, periodo_id, anio)
+
+
+@router.post(
+    "/complementary",
+    status_code=201,
+    summary="Crear un concepto complementario nuevo",
+)
+async def create_complementary(
+    request: ComplementaryCreateRequest,
+    session: Session = Depends(get_session),
+):
+    repository = SQLEnrollmentRepository(session)
+    comp_id = repository.create_complementary(
+        tipo_complementario=request.tipo_complementario,
+        anio=request.anio,
+        valor=request.valor,
+        estado=request.estado_complemento,
+        uso_matricula=request.uso_matricula,
+    )
+    return {"mensaje": "Complementario creado exitosamente", "complementario_id": comp_id}
+
+
+@router.post(
+    "/{matricula_id}/complementary/assign",
+    status_code=201,
+    summary="Asignar un complementario a una matrícula existente",
+)
+async def assign_complementary(
+    matricula_id: int,
+    request: AssignComplementaryRequest,
+    session: Session = Depends(get_session),
+):
+    repository = SQLEnrollmentRepository(session)
+    service = EnrollmentService(repository)
+    
+    try:
+        detalle_id = service.assign_complementary(
+            matricula_id=matricula_id,
+            complementary_id=request.complementario_id,
+            descuento=request.descuento
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+        
+    return {"mensaje": "Complementario asignado exitosamente a la matrícula", "detalle_id": detalle_id}

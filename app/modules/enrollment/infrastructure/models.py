@@ -72,9 +72,8 @@ class Matricula(Base, table=True):
     periodo_id: int = Field(foreign_key="periodo.id")
     valor_total: int = Field()
     fecha_registro: datetime = Field(nullable=False)
-    estado_matricula: bool = Field()
+    estado_matricula: str = Field(default="sin_abono", max_length=20)
     valor_pendiente_base: int = Field(default=0)
-    valor_pendiente_pension: int = Field(default=0)
 
 
 class DetalleMatricula(Base, table=True):
@@ -89,21 +88,12 @@ class DetalleMatricula(Base, table=True):
     fecha_abono: datetime = Field()
 
 
-class ParametrizarPension(Base, table=True):
-    """Configuración del costo de pensión mensual por grado y año."""
-
-    grado_id: int = Field(foreign_key="grado.id")
-    anio: int = Field()
-    valor: int = Field()
-
-
 class Pago(Base, table=True):
     """Registro de un pago realizado sobre la matrícula."""
 
     matricula_id: int = Field(foreign_key="matricula.id")
     codigo_talonario: str = Field(max_length=50, unique=True)
     monto_total: int = Field()
-    modo_pago: str = Field(max_length=20)
     fecha_pago: datetime = Field(default_factory=datetime.now)
     observacion: str | None = Field(default=None, max_length=255)
 

@@ -16,9 +16,9 @@ from app.modules.enrollment.infrastructure.models import (
     Grado,
     Matricula,
     ParametrizarMatricula,
-    ParametrizarPension,
     Periodo,
 )
+from app.modules.tuition.infrastructure.models import ParametrizarPension
 
 
 def seed() -> None:

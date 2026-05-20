@@ -24,20 +24,15 @@ class EnrollmentRepository(ABC):
     @abstractmethod
     def get_enrollment_details(
         self, student_id: int, year: int
-    ) -> tuple[int | None, bool, list[ComplementaryDetail], int, int]:
+    ) -> tuple[int | None, str, list[ComplementaryDetail], int]:
         """
         Obtiene los detalles de matrícula de un estudiante para un año.
 
         Returns:
             Tuple de (matricula_id, estado_matricula, lista_complementarios,
-                       pendiente_base, pendiente_pension).
-            Si no existe matrícula, retorna (None, False, [], 0, 0).
+                       pendiente_base).
+            Si no existe matrícula, retorna (None, 'sin_abono', [], 0).
         """
-        ...
-
-    @abstractmethod
-    def get_first_month_pension_cost(self, grade_id: int, year: int) -> int | None:
-        """Obtiene el costo de pensión mensual para un grado y año."""
         ...
 
     # === Registro de matrícula ===
@@ -70,7 +65,6 @@ class EnrollmentRepository(ABC):
         period_id: int,
         valor_total: int,
         base_cost: int,
-        pension_cost: int,
         complementary_details: list[tuple[int, int]],
     ) -> int:
         """
@@ -82,11 +76,10 @@ class EnrollmentRepository(ABC):
             period_id: ID del periodo.
             valor_total: Valor total de la matrícula.
             base_cost: Costo base pendiente.
-            pension_cost: Costo pensión pendiente.
             complementary_details: Lista de (complementario_id, valor).
 
         Returns:
-            ID de la matrícula creada.
+            Tuple: (ID de la matrícula creada, lista de IDs de los detalles creados).
         """
         ...
 
@@ -101,7 +94,7 @@ class EnrollmentRepository(ABC):
 
         Returns:
             Tuple (id, estudiante_id, valor_total, estado_matricula,
-                   pendiente_base, pendiente_pension, para_matricula_id)
+                   pendiente_base, para_matricula_id)
             o None si no existe.
         """
         ...
@@ -109,7 +102,7 @@ class EnrollmentRepository(ABC):
     @abstractmethod
     def get_enrollment_complementary_details(
         self, matricula_id: int
-    ) -> list[tuple[int, int, str, int]]:
+    ) -> list[tuple[int, int, str, int, int, int]]:
         """
         Obtiene los detalles de complementarios de una matrícula con pendientes > 0.
 
@@ -129,7 +122,6 @@ class EnrollmentRepository(ABC):
         matricula_id: int,
         codigo_talonario: str,
         monto_total: int,
-        modo_pago: str,
         observacion: str | None,
         distribuciones: list[tuple[str, int | None, int]],
     ) -> int:
@@ -150,11 +142,6 @@ class EnrollmentRepository(ABC):
         ...
 
     @abstractmethod
-    def update_pending_pension(self, matricula_id: int, new_pending: int) -> None:
-        """Actualiza el valor_pendiente_pension de una matrícula."""
-        ...
-
-    @abstractmethod
     def update_complementary_pending(
         self, matricula_id: int, complementario_id: int, new_pending: int
     ) -> None:
@@ -163,7 +150,52 @@ class EnrollmentRepository(ABC):
 
     @abstractmethod
     def update_enrollment_status(
-        self, matricula_id: int, status: bool
+        self, matricula_id: int, status: str
     ) -> None:
-        """Actualiza el estado_matricula."""
+        """Actualiza el estado_matricula (sin_abono / parcial / paz_y_salvo)."""
+        ...
+
+    @abstractmethod
+    def enrollment_has_payments(self, matricula_id: int) -> bool:
+        """Retorna True si existe al menos un pago registrado para esta matrícula."""
+        ...
+
+    # === Complementarios ===
+
+    @abstractmethod
+    def create_complementary(
+        self, tipo_complementario: str, anio: int, valor: int, estado: str, uso_matricula: bool
+    ) -> int:
+        """Crea un nuevo concepto complementario en la base de datos."""
+        ...
+
+    @abstractmethod
+    def get_complementary_by_id(self, complementary_id: int) -> tuple[int, int] | None:
+        """Obtiene la información de un complementario (id, valor)."""
+        ...
+
+    @abstractmethod
+    def assign_complementary_to_enrollment(
+        self, matricula_id: int, complementary_id: int, valor_completo: int, descuento: int
+    ) -> int:
+        """
+        Asigna un complementario a una matrícula existente (crea DetalleMatricula).
+        Retorna el ID del DetalleMatricula creado.
+        """
+        ...
+
+    @abstractmethod
+    def increase_enrollment_total_value(self, matricula_id: int, amount: int) -> None:
+        """Incrementa el valor total de la matrícula por la suma de un nuevo complementario."""
+        ...
+
+    @abstractmethod
+    def update_enrollment_details(
+        self,
+        matricula_id: int,
+        nuevo_valor_total: int,
+        nuevo_base: int,
+        comp_updates: list[tuple[int, int, int, int]],
+    ) -> None:
+        """Actualiza los detalles de la matrícula y complementarios."""
         ...

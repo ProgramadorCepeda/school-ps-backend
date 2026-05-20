@@ -17,12 +17,13 @@ class StudentInfo:
 class ComplementaryDetail:
     """Detalle de un complementario dentro de la matrícula."""
 
-    complementario_id: int
-    tipo_complementario: str
-    valor: int
-    descuento: int
-    valor_completo: int
-    valor_pendiente: int
+    detalle_id: int = 0  # ID del registro en detallematricula (usar en PUT para descuentos)
+    complementario_id: int = 0
+    tipo_complementario: str = ""
+    valor: int = 0
+    descuento: int = 0
+    valor_completo: int = 0
+    valor_pendiente: int = 0
 
 
 @dataclass
@@ -34,14 +35,12 @@ class EnrollmentBalance:
     enrollment_base_cost: int
     complementary_items: list[ComplementaryDetail] = field(default_factory=list)
     complementary_total: int = 0
-    first_month_pension: int = 0
     total_cost: int = 0
     total_paid: int = 0
     total_pending: int = 0
     enrollment_status: bool = False
     enrollment_exists: bool = False
     pending_base: int = 0
-    pending_pension: int = 0
 
 
 @dataclass
@@ -75,5 +74,4 @@ class EnrollmentCreated:
     valor_total: int
     costo_base: int
     total_complementarios: int
-    primer_mes_pension: int
     complementarios: list[ComplementaryDetail]

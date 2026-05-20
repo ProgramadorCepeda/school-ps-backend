@@ -4,6 +4,7 @@ from pydantic import BaseModel
 class ComplementaryItemResponse(BaseModel):
     """DTO para un ítem complementario dentro de la matrícula."""
 
+    detalle_id: int
     complementario_id: int
     tipo_complementario: str
     valor: int
@@ -31,14 +32,12 @@ class EnrollmentBalanceResponse(BaseModel):
     costo_base_matricula: int
     complementarios: list[ComplementaryItemResponse]
     total_complementarios: int
-    primer_mes_pension: int
     costo_total: int
     total_pagado: int
     total_pendiente: int
-    estado_matricula: bool
+    estado_matricula: str  # sin_abono | parcial | paz_y_salvo
     matricula_registrada: bool
     pendiente_base: int
-    pendiente_pension: int
 
 
 class EnrollmentCreatedResponse(BaseModel):
@@ -49,7 +48,6 @@ class EnrollmentCreatedResponse(BaseModel):
     valor_total: int
     costo_base: int
     total_complementarios: int
-    primer_mes_pension: int
     complementarios: list[ComplementaryItemResponse]
     mensaje: str
 

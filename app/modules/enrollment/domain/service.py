@@ -21,7 +21,6 @@ class EnrollmentService:
         Incluye:
         - Costo base de matrícula (según grado y año)
         - Complementarios asignados (con descuentos)
-        - Primer mes de pensión
         - Totales: costo, pagado y pendiente
         """
         student = self._repo.get_student_by_id(student_id)
@@ -38,26 +37,19 @@ class EnrollmentService:
             enrollment_status,
             complementary_items,
             pending_base,
-            pending_pension,
         ) = self._repo.get_enrollment_details(student_id, year)
         enrollment_exists = matricula_id is not None
 
         complementary_total = sum(item.valor_completo for item in complementary_items)
 
-        # Primer mes de pensión
-        first_month_pension = (
-            self._repo.get_first_month_pension_cost(student.grado_id, year) or 0
-        )
-
         # Cálculos totales
-        total_cost = base_cost + complementary_total + first_month_pension
+        total_cost = base_cost + complementary_total
 
         if enrollment_exists:
             # Pendiente = base pendiente + complementarios pendientes + pensión pendiente
             total_pending = (
                 pending_base
                 + sum(item.valor_pendiente for item in complementary_items)
-                + pending_pension
             )
         else:
             # Sin matrícula: todo está pendiente
@@ -71,14 +63,12 @@ class EnrollmentService:
             enrollment_base_cost=base_cost,
             complementary_items=complementary_items,
             complementary_total=complementary_total,
-            first_month_pension=first_month_pension,
             total_cost=total_cost,
             total_paid=total_paid,
             total_pending=total_pending,
             enrollment_status=enrollment_status,
             enrollment_exists=enrollment_exists,
             pending_base=pending_base,
-            pending_pension=pending_pension,
         )
 
     def register_enrollment(
@@ -89,7 +79,6 @@ class EnrollmentService:
 
         1. Busca costo base por grado del estudiante
         2. Asigna complementarios activos con uso_matricula=True
-        3. Suma 1er mes de pensión
         4. Crea registro Matricula + DetalleMatricula
         """
         student = self._repo.get_student_by_id(student_id)
@@ -135,23 +124,20 @@ class EnrollmentService:
 
         total_complementarios = sum(v for _, v in comp_details)
 
-        # Primer mes de pensión
-        pension = (
-            self._repo.get_first_month_pension_cost(student.grado_id, year) or 0
-        )
-
-        valor_total = base_cost + total_complementarios + pension
+        valor_total = base_cost + total_complementarios
 
         # Crear en BD
-        matricula_id = self._repo.create_enrollment(
+        matricula_id, detail_ids = self._repo.create_enrollment(
             para_matricula_id=param_id,
             student_id=student_id,
             period_id=period_id,
             valor_total=valor_total,
             base_cost=base_cost,
-            pension_cost=pension,
             complementary_details=comp_details,
         )
+
+        for entity, d_id in zip(comp_entities, detail_ids):
+            entity.detalle_id = d_id
 
         return EnrollmentCreated(
             matricula_id=matricula_id,
@@ -159,134 +145,86 @@ class EnrollmentService:
             valor_total=valor_total,
             costo_base=base_cost,
             total_complementarios=total_complementarios,
-            primer_mes_pension=pension,
             complementarios=comp_entities,
         )
 
-    def process_auto_payment(
-        self,
-        matricula_id: int,
-        monto: int,
-        codigo_talonario: str,
-        observacion: str | None = None,
-    ) -> PaymentResult:
+    def modify_enrollment(
+        self, matricula_id: int, request: "ModifyEnrollmentRequest"
+    ) -> dict:
         """
-        Procesa un pago con auto-distribución.
-
-        Distribuye el monto en orden de prioridad:
-        1. Costo base de matrícula
-        2. Complementarios asignados (en orden)
-        3. Primer mes de pensión
-
-        Si el monto sobra después de pagar un concepto, automáticamente
-        se aplica al siguiente.
+        Modifica los costos y descuentos de la matrícula y recalcula el total.
         """
-        if monto <= 0:
-            msg = "El monto del pago debe ser mayor a 0"
-            raise ValueError(msg)
-
         enrollment = self._repo.get_enrollment_by_id(matricula_id)
         if enrollment is None:
             msg = f"Matrícula con id {matricula_id} no encontrada"
             raise ValueError(msg)
 
-        if not self._repo.validate_talonario_unique(codigo_talonario):
-            msg = f"El código de talonario '{codigo_talonario}' ya está registrado"
-            raise ValueError(msg)
-
         (
             _mat_id,
             _est_id,
-            _valor_total,
+            valor_total_actual,
             _estado,
             pending_base,
-            pending_pension,
             _param_id,
         ) = enrollment
 
-        # Obtener complementarios con pendientes
+        delta_total = 0
+
+        nuevo_base = pending_base
+        if request.nuevo_costo_base is not None:
+            delta_total += (request.nuevo_costo_base - pending_base)
+            nuevo_base = request.nuevo_costo_base
+        elif request.descuento_base is not None:
+            delta_total -= request.descuento_base
+            nuevo_base -= request.descuento_base
+
         comp_details = self._repo.get_enrollment_complementary_details(matricula_id)
+        comp_updates = []
+        if request.complementarios:
+            for mod in request.complementarios:
+                detalle = next((d for d in comp_details if d[0] == mod.detalle_id), None)
+                if not detalle:
+                    msg = (
+                        f"El detalle_id {mod.detalle_id} no pertenece a esta matrícula. "
+                        f"Consulta el GET para obtener los detalle_id válidos."
+                    )
+                    raise ValueError(msg)
 
-        remaining = monto
-        distribuciones: list[PaymentAllocation] = []
+                det_id, comp_id, tipo, comp_pending, comp_completo, comp_descuento = detalle
+                
+                nuevo_comp_pending = comp_pending
+                nuevo_descuento = comp_descuento
+                nuevo_completo = comp_completo 
 
-        # 1. Aplicar a costo base
-        if remaining > 0 and pending_base > 0:
-            aplicar = min(remaining, pending_base)
-            new_pending = pending_base - aplicar
-            self._repo.update_pending_base(matricula_id, new_pending)
-            distribuciones.append(
-                PaymentAllocation(
-                    concepto="matricula_base",
-                    complementario_id=None,
-                    monto_aplicado=aplicar,
-                )
-            )
-            remaining -= aplicar
+                if mod.nuevo_valor_completo is not None:
+                    delta = mod.nuevo_valor_completo - comp_pending
+                    delta_total += delta
+                    nuevo_comp_pending = mod.nuevo_valor_completo
+                    nuevo_completo = mod.nuevo_valor_completo
+                elif mod.descuento is not None:
+                    delta_total -= mod.descuento
+                    nuevo_comp_pending -= mod.descuento
+                    nuevo_descuento = mod.descuento
+                
+                comp_updates.append((det_id, nuevo_completo, nuevo_descuento, nuevo_comp_pending))
 
-        # 2. Aplicar a complementarios (en orden)
-        for _det_id, comp_id, tipo, comp_pending in comp_details:
-            if remaining <= 0:
-                break
-            if comp_pending <= 0:
-                continue
-            aplicar = min(remaining, comp_pending)
-            new_pending = comp_pending - aplicar
-            self._repo.update_complementary_pending(
-                matricula_id, comp_id, new_pending
-            )
-            distribuciones.append(
-                PaymentAllocation(
-                    concepto=f"complementario:{tipo}",
-                    complementario_id=comp_id,
-                    monto_aplicado=aplicar,
-                )
-            )
-            remaining -= aplicar
+        nuevo_valor_total = valor_total_actual + delta_total
 
-        # 3. Aplicar a pensión
-        if remaining > 0 and pending_pension > 0:
-            aplicar = min(remaining, pending_pension)
-            new_pending = pending_pension - aplicar
-            self._repo.update_pending_pension(matricula_id, new_pending)
-            distribuciones.append(
-                PaymentAllocation(
-                    concepto="pension",
-                    complementario_id=None,
-                    monto_aplicado=aplicar,
-                )
-            )
-            remaining -= aplicar
-
-        monto_aplicado = monto - remaining
-
-        # Registrar pago
-        pago_id = self._repo.create_payment(
-            matricula_id=matricula_id,
-            codigo_talonario=codigo_talonario,
-            monto_total=monto,
-            modo_pago="auto",
-            observacion=observacion,
-            distribuciones=[
-                (d.concepto, d.complementario_id, d.monto_aplicado)
-                for d in distribuciones
-            ],
+        self._repo.update_enrollment_details(
+            matricula_id,
+            nuevo_valor_total,
+            nuevo_base,
+            comp_updates
         )
 
-        # Verificar si la matrícula quedó completamente pagada
-        saldo = self._calculate_total_pending(matricula_id)
-        if saldo == 0:
-            self._repo.update_enrollment_status(matricula_id, True)
+        self._update_enrollment_state(matricula_id)
 
-        return PaymentResult(
-            pago_id=pago_id,
-            codigo_talonario=codigo_talonario,
-            monto_total=monto,
-            monto_aplicado=monto_aplicado,
-            distribuciones=distribuciones,
-            saldo_restante_matricula=saldo,
-            matricula_pagada=saldo == 0,
-        )
+        return {
+            "mensaje": "Matrícula modificada exitosamente",
+            "matricula_id": matricula_id,
+            "nuevo_valor_total": nuevo_valor_total,
+            "motivo_registrado": request.motivo,
+        }
 
     def process_directed_payment(
         self,
@@ -313,18 +251,25 @@ class EnrollmentService:
             msg = f"El código de talonario '{codigo_talonario}' ya está registrado"
             raise ValueError(msg)
 
+        # Fix 3: Bloquear pago si la matrícula ya está completamente pagada
+        saldo_actual = self._calculate_total_pending(matricula_id)
+        if saldo_actual == 0:
+            raise ValueError(
+                "La matrícula ya está completamente pagada (saldo = $0). "
+                "No se puede registrar un nuevo abono ordinario."
+            )
+
         (
             _mat_id,
             _est_id,
             _valor_total,
             _estado,
             pending_base,
-            pending_pension,
             _param_id,
         ) = enrollment
 
         comp_details = self._repo.get_enrollment_complementary_details(matricula_id)
-        comp_pending_map = {comp_id: pend for _, comp_id, _, pend in comp_details}
+        comp_pending_map = {comp_id: pend for _, comp_id, _, pend, _, _ in comp_details}
 
         monto_total = 0
         distribuciones: list[PaymentAllocation] = []
@@ -344,17 +289,6 @@ class EnrollmentService:
                 new_pending = pending_base - monto
                 self._repo.update_pending_base(matricula_id, new_pending)
                 pending_base = new_pending
-
-            elif concepto == "pension":
-                if monto > pending_pension:
-                    msg = (
-                        f"Monto ${monto:,} excede el pendiente de pensión "
-                        f"(${pending_pension:,})"
-                    )
-                    raise ValueError(msg)
-                new_pending = pending_pension - monto
-                self._repo.update_pending_pension(matricula_id, new_pending)
-                pending_pension = new_pending
 
             elif concepto.startswith("complementario") and comp_id is not None:
                 current_pending = comp_pending_map.get(comp_id, 0)
@@ -387,7 +321,6 @@ class EnrollmentService:
             matricula_id=matricula_id,
             codigo_talonario=codigo_talonario,
             monto_total=monto_total,
-            modo_pago="dirigido",
             observacion=observacion,
             distribuciones=[
                 (d.concepto, d.complementario_id, d.monto_aplicado)
@@ -395,10 +328,9 @@ class EnrollmentService:
             ],
         )
 
-        # Verificar si la matrícula quedó completamente pagada
+        # Actualizar el estado semafórico de la matrícula (sin_abono / parcial / paz_y_salvo)
+        self._update_enrollment_state(matricula_id)
         saldo = self._calculate_total_pending(matricula_id)
-        if saldo == 0:
-            self._repo.update_enrollment_status(matricula_id, True)
 
         return PaymentResult(
             pago_id=pago_id,
@@ -416,8 +348,55 @@ class EnrollmentService:
         if enrollment is None:
             return 0
 
-        _, _, _, _, pending_base, pending_pension, _ = enrollment
+        _, _, _, _, pending_base, _ = enrollment
         comp_details = self._repo.get_enrollment_complementary_details(matricula_id)
-        comp_pending = sum(pend for _, _, _, pend in comp_details)
+        comp_pending = sum(pend for _, _, _, pend, _, _ in comp_details)
 
-        return pending_base + comp_pending + pending_pension
+        return pending_base + comp_pending
+
+    def assign_complementary(
+        self, matricula_id: int, complementary_id: int, descuento: int
+    ) -> int:
+        enrollment = self._repo.get_enrollment_by_id(matricula_id)
+        if enrollment is None:
+            raise ValueError(f"Matrícula con id {matricula_id} no encontrada")
+
+        comp_data = self._repo.get_complementary_by_id(complementary_id)
+        if comp_data is None:
+            raise ValueError(f"Complementario con id {complementary_id} no encontrado")
+        
+        _, valor_completo = comp_data
+
+        if descuento > valor_completo:
+            raise ValueError("El descuento no puede ser mayor al valor del complementario")
+
+        detalle_id = self._repo.assign_complementary_to_enrollment(
+            matricula_id, complementary_id, valor_completo, descuento
+        )
+
+        monto_a_sumar = valor_completo - descuento
+        self._repo.increase_enrollment_total_value(matricula_id, monto_a_sumar)
+        self._update_enrollment_state(matricula_id)
+
+        return detalle_id
+
+    def _update_enrollment_state(self, matricula_id: int) -> None:
+        """Calcula y actualiza el estado semáfórico de la matrícula.
+
+        Estados (MAT-RF-04 / MAT-RF-05):
+        - 'sin_abono'  : Existe la obligación pero no hay ningún pago registrado.
+        - 'parcial'    : Hay abonos registrados pero queda saldo mayor a cero.
+        - 'paz_y_salvo': El saldo llegó a cero.
+        """
+        saldo = self._calculate_total_pending(matricula_id)
+        tiene_pagos = self._repo.enrollment_has_payments(matricula_id)
+
+        if saldo == 0:
+            nuevo_estado = "paz_y_salvo"
+        elif tiene_pagos:
+            nuevo_estado = "parcial"
+        else:
+            nuevo_estado = "sin_abono"
+
+        self._repo.update_enrollment_status(matricula_id, nuevo_estado)
+
