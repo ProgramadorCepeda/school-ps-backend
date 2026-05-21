@@ -10,7 +10,6 @@ from app.modules.cafeteria.infrastructure import models as cafeteria  # noqa: F4
 from app.modules.classroom.infrastructure import models as classroom  # noqa: F401
 from app.modules.enrollment.infrastructure import models as enrollment  # noqa: F401
 from app.modules.inventory.infrastructure import models as inventory  # noqa: F401
-
 from app.modules.peace_safe.infrastructure import models as peace_safe  # noqa: F401
 from app.modules.principal.infrastructure import models as principal  # noqa: F401
 from app.modules.tests.infrastructure import models as tests  # noqa: F401
