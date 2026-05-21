@@ -7,6 +7,10 @@ from app.modules.enrollment.domain.entities import (
 )
 from app.modules.enrollment.domain.repositories import EnrollmentRepository
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from app.modules.enrollment.schemas.request import ModifyEnrollmentRequest
+
 
 class EnrollmentService:
     """Servicio de dominio que calcula el balance de matrícula."""

@@ -38,7 +38,7 @@ class EnrollmentBalance:
     total_cost: int = 0
     total_paid: int = 0
     total_pending: int = 0
-    enrollment_status: bool = False
+    enrollment_status: str = "sin_abono"
     enrollment_exists: bool = False
     pending_base: int = 0
 

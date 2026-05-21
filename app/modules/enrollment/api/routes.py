@@ -53,7 +53,7 @@ router = APIRouter(
 )
 async def get_enrollment_balance(
     student_id: int,
-    year: int = Query(
+    year: int | None = Query(
         default=None,
         description="Año a consultar. Si no se envía, se usa el año actual.",
     ),

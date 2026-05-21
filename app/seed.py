@@ -50,6 +50,9 @@ def seed() -> None:
         ]
         session.add_all(grados)
         session.flush()
+        
+        for g in grados:
+            assert g.id is not None
 
         # === ACUDIENTES ===
         acudiente1 = Acudiente(
@@ -66,6 +69,9 @@ def seed() -> None:
         )
         session.add_all([acudiente1, acudiente2])
         session.flush()
+        
+        assert acudiente1.id is not None
+        assert acudiente2.id is not None
 
         # === ESTUDIANTES ===
         estudiante1 = Estudiante(
@@ -95,6 +101,10 @@ def seed() -> None:
         )
         session.add_all([estudiante1, estudiante2, estudiante3])
         session.flush()
+        
+        assert estudiante1.id is not None
+        assert estudiante2.id is not None
+        assert estudiante3.id is not None
 
         # === PERIODOS ===
         periodo = Periodo(
@@ -104,6 +114,8 @@ def seed() -> None:
         )
         session.add(periodo)
         session.flush()
+        
+        assert periodo.id is not None
 
         # === PARAMETRIZAR MATRÍCULA (costo base por grado y año) ===
         param_sexto = ParametrizarMatricula(
@@ -120,6 +132,11 @@ def seed() -> None:
         )
         session.add_all([param_sexto, param_decimo, param_segundo, param_sexto_2025])
         session.flush()
+        
+        assert param_sexto.id is not None
+        assert param_decimo.id is not None
+        assert param_segundo.id is not None
+        assert param_sexto_2025.id is not None
 
         # === PARAMETRIZAR PENSIÓN (costo mensual por grado y año) ===
         pension_sexto = ParametrizarPension(
@@ -138,6 +155,11 @@ def seed() -> None:
             [pension_sexto, pension_decimo, pension_segundo, pension_sexto_2025]
         )
         session.flush()
+        
+        assert pension_sexto.id is not None
+        assert pension_decimo.id is not None
+        assert pension_segundo.id is not None
+        assert pension_sexto_2025.id is not None
 
         # === COMPLEMENTARIOS ===
         comp_seguro = Complementario(
@@ -170,6 +192,11 @@ def seed() -> None:
         )
         session.add_all([comp_seguro, comp_agenda, comp_carnet, comp_plataforma])
         session.flush()
+        
+        assert comp_seguro.id is not None
+        assert comp_agenda.id is not None
+        assert comp_carnet.id is not None
+        assert comp_plataforma.id is not None
 
         # === MATRÍCULAS ===
         # Estudiante 1 (Juan - Sexto): matrícula con pendientes parciales
@@ -179,12 +206,13 @@ def seed() -> None:
             periodo_id=periodo.id,
             valor_total=1570000,  # 850k + 120k + 45k + 25k + 80k + 450k
             fecha_registro=datetime(2026, 1, 20),
-            estado_matricula=False,
+            estado_matricula="parcial",
             valor_pendiente_base=850000,  # No ha pagado base
-            valor_pendiente_pension=450000,  # No ha pagado pensión
         )
         session.add(matricula1)
         session.flush()
+        
+        assert matricula1.id is not None
 
         # Detalles de matrícula para Estudiante 1
         detalles1 = [
@@ -234,12 +262,13 @@ def seed() -> None:
             periodo_id=periodo.id,
             valor_total=1740000,
             fecha_registro=datetime(2026, 1, 18),
-            estado_matricula=True,  # Al día
+            estado_matricula="paz_y_salvo",  # Al día
             valor_pendiente_base=0,
-            valor_pendiente_pension=0,
         )
         session.add(matricula2)
         session.flush()
+        
+        assert matricula2.id is not None
 
         detalles2 = [
             DetalleMatricula(

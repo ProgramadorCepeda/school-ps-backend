@@ -40,11 +40,13 @@ class SQLEnrollmentRepository(EnrollmentRepository):
             return None
 
         estudiante, grado = result
+        assert estudiante.id is not None
+        assert estudiante.grado_id is not None
         return StudentInfo(
             id=estudiante.id,
             nombre=estudiante.nombre,
             documento=estudiante.documento,
-            grado_id=grado.id,
+            grado_id=estudiante.grado_id,
             grado_nombre=grado.nombre,
             activo=estudiante.activo,
         )
@@ -59,7 +61,7 @@ class SQLEnrollmentRepository(EnrollmentRepository):
 
     def get_enrollment_details(
         self, student_id: int, year: int
-    ) -> tuple[int | None, bool, list[ComplementaryDetail], int, int]:
+    ) -> tuple[int | None, str, list[ComplementaryDetail], int]:
         # Buscar la matrícula del estudiante para el año dado
         statement = (
             select(Matricula)
@@ -75,7 +77,7 @@ class SQLEnrollmentRepository(EnrollmentRepository):
         matricula = self._session.exec(statement).first()
 
         if matricula is None:
-            return None, "sin_abono", [], 0, 0
+            return None, "sin_abono", [], 0
 
         # Obtener detalles con complementarios
         detail_statement = (
@@ -90,8 +92,8 @@ class SQLEnrollmentRepository(EnrollmentRepository):
 
         complementary_items = [
             ComplementaryDetail(
-                detalle_id=det.id,
-                complementario_id=comp.id,
+                detalle_id=det.id if det.id is not None else 0,
+                complementario_id=comp.id if comp.id is not None else 0,
                 tipo_complementario=comp.tipo_complementario,
                 valor=comp.valor,
                 descuento=det.descuento,
@@ -143,7 +145,7 @@ class SQLEnrollmentRepository(EnrollmentRepository):
         results = self._session.exec(statement).all()
         return [
             (comp.id, comp.tipo_complementario, comp.valor)
-            for comp in results
+            for comp in results if comp.id is not None
         ]
 
     def create_enrollment(
@@ -167,6 +169,8 @@ class SQLEnrollmentRepository(EnrollmentRepository):
         self._session.add(matricula)
         self._session.flush()
 
+        assert matricula.id is not None
+
         detail_ids = []
         for comp_id, valor in complementary_details:
             detalle = DetalleMatricula(
@@ -180,7 +184,8 @@ class SQLEnrollmentRepository(EnrollmentRepository):
             )
             self._session.add(detalle)
             self._session.flush()
-            detail_ids.append(detalle.id)
+            if detalle.id is not None:
+                detail_ids.append(detalle.id)
 
         self._session.commit()
         return matricula.id, detail_ids
@@ -217,7 +222,7 @@ class SQLEnrollmentRepository(EnrollmentRepository):
         results = self._session.exec(statement).all()
         return [
             (det.id, comp.id, comp.tipo_complementario, det.valor_pendiente, det.valor_completo, det.descuento)
-            for det, comp in results
+            for det, comp in results if det.id is not None and comp.id is not None
         ]
 
     def validate_talonario_unique(self, codigo: str) -> bool:
@@ -241,6 +246,8 @@ class SQLEnrollmentRepository(EnrollmentRepository):
         )
         self._session.add(pago)
         self._session.flush()
+
+        assert pago.id is not None
 
         for concepto, comp_id, monto in distribuciones:
             detalle = PagoDetalle(
@@ -330,6 +337,7 @@ class SQLEnrollmentRepository(EnrollmentRepository):
         )
         self._session.add(comp)
         self._session.commit()
+        assert comp.id is not None
         return comp.id
 
     def get_complementary_by_id(self, complementary_id: int) -> tuple[int, int] | None:
@@ -337,6 +345,7 @@ class SQLEnrollmentRepository(EnrollmentRepository):
         comp = self._session.exec(statement).first()
         if comp is None:
             return None
+        assert comp.id is not None
         return (comp.id, comp.valor)
 
     def assign_complementary_to_enrollment(
@@ -353,6 +362,7 @@ class SQLEnrollmentRepository(EnrollmentRepository):
         )
         self._session.add(detalle)
         self._session.commit()
+        assert detalle.id is not None
         return detalle.id
 
     def increase_enrollment_total_value(self, matricula_id: int, amount: int) -> None:

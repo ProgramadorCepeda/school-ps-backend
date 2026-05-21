@@ -21,10 +21,10 @@ class MassEnrollmentService:
         Formato esperado: documento,nombre,grado_id,acudiente_id
         """
         decoded_content = content.decode("utf-8")
-        reader = csv.reader(io.StringIO(decoded_content), delimiter=",")
+        reader = csv.reader(io.StringIO(decoded_content), delimiter=",")  # type: ignore[abstract]
         
         return self._process_rows(reader, period_id, year)
-
+    
     def process_txt_file(self, content: bytes, period_id: int, year: int) -> dict:
         """
         Procesa un archivo TXT separado por comas.
@@ -87,6 +87,8 @@ class MassEnrollmentService:
                 
                 # Intentar matricular
                 try:
+                    if estudiante.id is None:
+                        raise ValueError("Estudiante ID no generado")
                     self._enrollment_service.register_enrollment(
                         student_id=estudiante.id,
                         period_id=period_id,
