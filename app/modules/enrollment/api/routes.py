@@ -1,9 +1,7 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
-from sqlmodel import Session
-
-from app.core.db import get_session
+from app.core.db import SessionDep
 from app.modules.enrollment.application.get_enrollment_balance import (
     GetEnrollmentBalance,
 )
@@ -53,11 +51,11 @@ router = APIRouter(
 )
 async def get_enrollment_balance(
     student_id: int,
+    session: SessionDep,
     year: int | None = Query(
         default=None,
         description="Año a consultar. Si no se envía, se usa el año actual.",
     ),
-    session: Session = Depends(get_session),
 ) -> EnrollmentBalanceResponse:
     if year is None:
         year = datetime.now().year
@@ -116,7 +114,7 @@ async def get_enrollment_balance(
 )
 async def register_enrollment(
     request: RegisterEnrollmentRequest,
-    session: Session = Depends(get_session),
+    session: SessionDep,
 ) -> EnrollmentCreatedResponse:
     repository = SQLEnrollmentRepository(session)
     use_case = RegisterEnrollment(repository)
@@ -165,7 +163,7 @@ async def register_enrollment(
 async def modify_enrollment(
     matricula_id: int,
     request: ModifyEnrollmentRequest,
-    session: Session = Depends(get_session),
+    session: SessionDep,
 ) -> dict:
     repository = SQLEnrollmentRepository(session)
     use_case = ModifyEnrollment(repository)
@@ -192,7 +190,7 @@ async def modify_enrollment(
 )
 async def directed_payment(
     request: DirectedPaymentRequest,
-    session: Session = Depends(get_session),
+    session: SessionDep,
 ) -> PaymentResultResponse:
     repository = SQLEnrollmentRepository(session)
     use_case = ProcessDirectedPayment(repository)
@@ -252,8 +250,8 @@ async def directed_payment(
 async def register_massive_csv(
     periodo_id: int,
     anio: int,
+    session: SessionDep,
     file: UploadFile = File(...),
-    session: Session = Depends(get_session),
 ):
     repository = SQLEnrollmentRepository(session)
     enrollment_service = EnrollmentService(repository)
@@ -271,8 +269,8 @@ async def register_massive_csv(
 async def register_massive_txt(
     periodo_id: int,
     anio: int,
+    session: SessionDep,
     file: UploadFile = File(...),
-    session: Session = Depends(get_session),
 ):
     repository = SQLEnrollmentRepository(session)
     enrollment_service = EnrollmentService(repository)
@@ -289,7 +287,7 @@ async def register_massive_txt(
 )
 async def create_complementary(
     request: ComplementaryCreateRequest,
-    session: Session = Depends(get_session),
+    session: SessionDep,
 ):
     repository = SQLEnrollmentRepository(session)
     comp_id = repository.create_complementary(
@@ -310,7 +308,7 @@ async def create_complementary(
 async def assign_complementary(
     matricula_id: int,
     request: AssignComplementaryRequest,
-    session: Session = Depends(get_session),
+    session: SessionDep,
 ):
     repository = SQLEnrollmentRepository(session)
     service = EnrollmentService(repository)

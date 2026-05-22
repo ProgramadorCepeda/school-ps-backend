@@ -8,10 +8,10 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
-engine = create_engine(settings.database_url, echo=False)
+engine = create_engine(settings.database_url)
 
 
-def get_session() -> Generator[Session, None, None]:
+def get_session():
     """FastAPI dependency that yields a DB session and closes it after use."""
     with Session(engine) as session:
         yield session
