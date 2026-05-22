@@ -10,14 +10,12 @@ from app.modules.enrollment.domain.repositories import EnrollmentRepository
 from app.modules.enrollment.infrastructure.models import (
     Complementario,
     DetalleMatricula,
-    Docente,
     Estudiante,
     Grado,
     Matricula,
     Pago,
     PagoDetalle,
     ParametrizarMatricula,
-    Periodo,
 )
 
 
