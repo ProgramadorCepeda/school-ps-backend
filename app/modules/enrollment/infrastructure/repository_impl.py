@@ -32,7 +32,7 @@ class SQLEnrollmentRepository(EnrollmentRepository):
     def get_student_by_id(self, student_id: int) -> StudentInfo | None:
         statement = (
             select(Estudiante, Grado)
-            .join(Grado, Estudiante.grado_id == Grado.id)
+            .join(Grado, Estudiante.grado_id == Grado.id)  # type: ignore[arg-type]
             .where(Estudiante.id == student_id)
         )
         result = self._session.exec(statement).first()
@@ -67,7 +67,7 @@ class SQLEnrollmentRepository(EnrollmentRepository):
             select(Matricula)
             .join(
                 ParametrizarMatricula,
-                Matricula.para_matricula_id == ParametrizarMatricula.id,
+                Matricula.para_matricula_id == ParametrizarMatricula.id,  # type: ignore[arg-type]
             )
             .where(
                 Matricula.estudiante_id == student_id,
@@ -84,7 +84,7 @@ class SQLEnrollmentRepository(EnrollmentRepository):
             select(DetalleMatricula, Complementario)
             .join(
                 Complementario,
-                DetalleMatricula.complementario_id == Complementario.id,
+                DetalleMatricula.complementario_id == Complementario.id,  # type: ignore[arg-type]
             )
             .where(DetalleMatricula.matricula_id == matricula.id)
         )
@@ -125,7 +125,7 @@ class SQLEnrollmentRepository(EnrollmentRepository):
             select(Matricula)
             .join(
                 ParametrizarMatricula,
-                Matricula.para_matricula_id == ParametrizarMatricula.id,
+                Matricula.para_matricula_id == ParametrizarMatricula.id,  # type: ignore[arg-type]
             )
             .where(
                 Matricula.estudiante_id == student_id,
@@ -215,7 +215,7 @@ class SQLEnrollmentRepository(EnrollmentRepository):
             select(DetalleMatricula, Complementario)
             .join(
                 Complementario,
-                DetalleMatricula.complementario_id == Complementario.id,
+                DetalleMatricula.complementario_id == Complementario.id,  # type: ignore[arg-type]
             )
             .where(DetalleMatricula.matricula_id == matricula_id)
         )

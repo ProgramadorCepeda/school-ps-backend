@@ -66,7 +66,7 @@ class EnrollmentRepository(ABC):
         valor_total: int,
         base_cost: int,
         complementary_details: list[tuple[int, int]],
-    ) -> int:
+    ) -> tuple[int, list[int]]:
         """
         Crea el registro de matrícula con sus detalles.
 

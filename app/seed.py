@@ -75,7 +75,7 @@ def seed() -> None:
 
         # === ESTUDIANTES ===
         estudiante1 = Estudiante(
-            grado_id=grados[5].id,  # Sexto
+            grado_id=grados[5].id,  # type: ignore[arg-type]
             acudiente_id=acudiente1.id,
             nombre="Juan García Pérez",
             documento="1005123456",
@@ -83,7 +83,7 @@ def seed() -> None:
             fecha_activo=datetime(2026, 1, 15),
         )
         estudiante2 = Estudiante(
-            grado_id=grados[10].id,  # Décimo
+            grado_id=grados[10].id,  # type: ignore[arg-type]
             acudiente_id=acudiente2.id,
             nombre="Ana López Martínez",
             documento="1005654321",
@@ -92,7 +92,7 @@ def seed() -> None:
         )
         # Estudiante sin matrícula (para probar registro automático)
         estudiante3 = Estudiante(
-            grado_id=grados[2].id,  # Segundo
+            grado_id=grados[2].id,  # type: ignore[arg-type]
             acudiente_id=acudiente1.id,
             nombre="Pedro García Pérez",
             documento="1005111222",
@@ -119,16 +119,16 @@ def seed() -> None:
 
         # === PARAMETRIZAR MATRÍCULA (costo base por grado y año) ===
         param_sexto = ParametrizarMatricula(
-            grado_id=grados[5].id, anio=2026, valor=850000
+            grado_id=grados[5].id, anio=2026, valor=850000  # type: ignore[arg-type]
         )
         param_decimo = ParametrizarMatricula(
-            grado_id=grados[10].id, anio=2026, valor=950000
+            grado_id=grados[10].id, anio=2026, valor=950000  # type: ignore[arg-type]
         )
         param_segundo = ParametrizarMatricula(
-            grado_id=grados[2].id, anio=2026, valor=750000
+            grado_id=grados[2].id, anio=2026, valor=750000  # type: ignore[arg-type]
         )
         param_sexto_2025 = ParametrizarMatricula(
-            grado_id=grados[5].id, anio=2025, valor=800000
+            grado_id=grados[5].id, anio=2025, valor=800000  # type: ignore[arg-type]
         )
         session.add_all([param_sexto, param_decimo, param_segundo, param_sexto_2025])
         session.flush()
@@ -140,16 +140,16 @@ def seed() -> None:
 
         # === PARAMETRIZAR PENSIÓN (costo mensual por grado y año) ===
         pension_sexto = ParametrizarPension(
-            grado_id=grados[5].id, anio=2026, valor=450000
+            grado_id=grados[5].id, anio=2026, valor=450000  # type: ignore[arg-type]
         )
         pension_decimo = ParametrizarPension(
-            grado_id=grados[10].id, anio=2026, valor=520000
+            grado_id=grados[10].id, anio=2026, valor=520000  # type: ignore[arg-type]
         )
         pension_segundo = ParametrizarPension(
-            grado_id=grados[2].id, anio=2026, valor=380000
+            grado_id=grados[2].id, anio=2026, valor=350000  # type: ignore[arg-type]
         )
         pension_sexto_2025 = ParametrizarPension(
-            grado_id=grados[5].id, anio=2025, valor=420000
+            grado_id=grados[5].id, anio=2025, valor=400000  # type: ignore[arg-type]
         )
         session.add_all(
             [pension_sexto, pension_decimo, pension_segundo, pension_sexto_2025]
