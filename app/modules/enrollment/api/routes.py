@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi import APIRouter, HTTPException, Query, UploadFile, File
 from app.core.db import SessionDep
 from app.modules.enrollment.application.get_enrollment_balance import (
     GetEnrollmentBalance,
