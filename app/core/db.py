@@ -11,7 +11,6 @@ engine = create_engine(settings.database_url)
 
 
 def get_session():
-    """FastAPI dependency that yields a DB session and closes it after use."""
     with Session(engine) as session:
         yield session
 
