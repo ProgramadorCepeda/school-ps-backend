@@ -2,8 +2,9 @@ import csv
 import io
 from datetime import datetime
 
-from sqlmodel import Session, select
+from sqlmodel import select
 
+from app.core.db import SessionDep
 from app.modules.enrollment.domain.service import EnrollmentService
 from app.modules.enrollment.infrastructure.models import Estudiante
 from app.modules.enrollment.infrastructure.repository import (
@@ -14,7 +15,7 @@ from app.modules.enrollment.infrastructure.repository import (
 class MassEnrollmentService:
     """Caso de uso para registrar matrículas masivamente a partir de archivos."""
 
-    def __init__(self, session: Session):
+    def __init__(self, session: SessionDep):
         self._session = session
         repository = SQLEnrollmentRepository(session)
         self._enrollment_service = EnrollmentService(repository)
