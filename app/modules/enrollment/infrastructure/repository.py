@@ -371,3 +371,36 @@ class SQLEnrollmentRepository(EnrollmentRepository):
             self._session.add(mat)
             self._session.commit()
 
+    # === Estudiantes ===
+
+    def find_or_create_student(
+        self,
+        documento: str,
+        nombre: str,
+        grado_id: int,
+        acudiente_id: int,
+    ) -> int:
+        statement = select(Estudiante).where(Estudiante.documento == documento)
+        estudiante = self._session.exec(statement).first()
+
+        if not estudiante:
+            estudiante = Estudiante(
+                documento=documento,
+                nombre=nombre,
+                grado_id=grado_id,
+                acudiente_id=acudiente_id,
+                activo=True,
+                fecha_activo=datetime.now(),
+            )
+            self._session.add(estudiante)
+            self._session.commit()
+            self._session.refresh(estudiante)
+        else:
+            if estudiante.grado_id != grado_id or estudiante.acudiente_id != acudiente_id:
+                estudiante.grado_id = grado_id
+                estudiante.acudiente_id = acudiente_id
+                self._session.add(estudiante)
+                self._session.commit()
+
+        assert estudiante.id is not None
+        return estudiante.id

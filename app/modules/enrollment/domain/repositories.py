@@ -199,3 +199,16 @@ class EnrollmentRepository(ABC):
     ) -> None:
         """Actualiza los detalles de la matrícula y complementarios."""
         ...
+
+    # === Estudiantes ===
+
+    @abstractmethod
+    def find_or_create_student(
+        self,
+        documento: str,
+        nombre: str,
+        grado_id: int,
+        acudiente_id: int,
+    ) -> int:
+        """Busca un estudiante por documento; si no existe lo crea. Retorna el ID."""
+        ...

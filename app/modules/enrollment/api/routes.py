@@ -12,7 +12,7 @@ from app.modules.enrollment.application.create_complementary import (
 from app.modules.enrollment.application.get_enrollment_balance import (
     GetEnrollmentBalance,
 )
-from app.modules.enrollment.application.mass_enrollment import MassEnrollmentService
+from app.modules.enrollment.application.mass_enrollment import MassEnrollment
 from app.modules.enrollment.application.modify_enrollment import ModifyEnrollment
 from app.modules.enrollment.application.process_payment import ProcessDirectedPayment
 from app.modules.enrollment.application.register_enrollment import (
@@ -252,10 +252,10 @@ async def register_massive_csv(
     anio: int,
     file: UploadFile = File(...),
 ):
-    mass_service = MassEnrollmentService(session=session)
+    use_case = MassEnrollment(session=session)
 
     content = await file.read()
-    return mass_service.process_csv_file(content, periodo_id, anio)
+    return use_case.execute(content, periodo_id, anio)
 
 
 @router.post(
@@ -269,10 +269,10 @@ async def register_massive_txt(
     anio: int,
     file: UploadFile = File(...),
 ):
-    mass_service = MassEnrollmentService(session=session)
+    use_case = MassEnrollment(session=session)
 
     content = await file.read()
-    return mass_service.process_txt_file(content, periodo_id, anio)
+    return use_case.execute(content, periodo_id, anio)
 
 
 @router.post(

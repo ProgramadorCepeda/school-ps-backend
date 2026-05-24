@@ -7,9 +7,7 @@ from app.modules.enrollment.domain.entities import (
 )
 from app.modules.enrollment.domain.repositories import EnrollmentRepository
 
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from app.modules.enrollment.schemas.request import ModifyEnrollmentRequest
+from app.modules.enrollment.schemas.request import ModifyEnrollmentRequest
 
 
 class EnrollmentService:
@@ -404,3 +402,32 @@ class EnrollmentService:
 
         self.repo.update_enrollment_status(matricula_id, nuevo_estado)
 
+    def create_complementary(
+        self,
+        tipo_complementario: str,
+        anio: int,
+        valor: int,
+        estado: str,
+        uso_matricula: bool,
+    ) -> int:
+        return self.repo.create_complementary(
+            tipo_complementario=tipo_complementario,
+            anio=anio,
+            valor=valor,
+            estado=estado,
+            uso_matricula=uso_matricula,
+        )
+
+    def find_or_create_student(
+        self,
+        documento: str,
+        nombre: str,
+        grado_id: int,
+        acudiente_id: int,
+    ) -> int:
+        return self.repo.find_or_create_student(
+            documento=documento,
+            nombre=nombre,
+            grado_id=grado_id,
+            acudiente_id=acudiente_id,
+        )

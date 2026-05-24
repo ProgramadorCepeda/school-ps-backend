@@ -1,50 +1,35 @@
 import csv
 import io
-from datetime import datetime
 
-from sqlmodel import select
+from sqlmodel import Session
 
-from app.core.db import SessionDep
 from app.modules.enrollment.domain.service import EnrollmentService
-from app.modules.enrollment.infrastructure.models import Estudiante
 from app.modules.enrollment.infrastructure.repository import (
     SQLEnrollmentRepository,
 )
 
 
-class MassEnrollmentService:
+class MassEnrollment:
     """Caso de uso para registrar matrículas masivamente a partir de archivos."""
 
-    def __init__(self, session: SessionDep):
-        self._session = session
+    def __init__(self, session: Session) -> None:
         repository = SQLEnrollmentRepository(session)
-        self._enrollment_service = EnrollmentService(repository)
+        self._service = EnrollmentService(repository)
 
-    def process_csv_file(self, content: bytes, period_id: int, year: int) -> dict:
-        """
-        Procesa un archivo CSV y crea/actualiza los estudiantes y los matricula.
-        Formato esperado: documento,nombre,grado_id,acudiente_id
-        """
+    def execute(self, content: bytes, period_id: int, year: int) -> dict:
         decoded_content = content.decode("utf-8")
         reader = csv.reader(io.StringIO(decoded_content), delimiter=",")  # type: ignore[abstract]
-        
         return self._process_rows(reader, period_id, year)
-    
-    def process_txt_file(self, content: bytes, period_id: int, year: int) -> dict:
-        """
-        Procesa un archivo TXT separado por comas.
-        """
-        return self.process_csv_file(content, period_id, year)
 
     def _process_rows(self, reader, period_id: int, year: int) -> dict:
         success_count = 0
         error_count = 0
-        errors = []
+        errors: list[str] = []
 
         header = next(reader, None)
         if not header:
             return {"status": "error", "message": "El archivo está vacío"}
-            
+
         try:
             int(header[2])
             rows = [header] + list(reader)
@@ -54,46 +39,29 @@ class MassEnrollmentService:
         for line_idx, row in enumerate(rows, start=2):
             if not row or len(row) < 4:
                 continue
-                
+
             try:
                 documento = row[0].strip()
                 nombre = row[1].strip()
                 grado_id = int(row[2].strip())
                 acudiente_id = int(row[3].strip())
-                
-                statement = select(Estudiante).where(Estudiante.documento == documento)
-                estudiante = self._session.exec(statement).first()
-                
-                if not estudiante:
-                    estudiante = Estudiante(
-                        documento=documento,
-                        nombre=nombre,
-                        grado_id=grado_id,
-                        acudiente_id=acudiente_id,
-                        activo=True,
-                        fecha_activo=datetime.now()
-                    )
-                    self._session.add(estudiante)
-                    self._session.commit()
-                    self._session.refresh(estudiante)
-                else:
-                    if estudiante.grado_id != grado_id or estudiante.acudiente_id != acudiente_id:
-                        estudiante.grado_id = grado_id
-                        estudiante.acudiente_id = acudiente_id
-                        self._session.add(estudiante)
-                        self._session.commit()
-                
+
+                student_id = self._service.find_or_create_student(
+                    documento=documento,
+                    nombre=nombre,
+                    grado_id=grado_id,
+                    acudiente_id=acudiente_id,
+                )
+
                 try:
-                    if estudiante.id is None:
-                        raise ValueError("Estudiante ID no generado")
-                    self._enrollment_service.register_enrollment(
-                        student_id=estudiante.id,
+                    self._service.register_enrollment(
+                        student_id=student_id,
                         period_id=period_id,
-                        year=year
+                        year=year,
                     )
                     success_count += 1
                 except ValueError as ve:
-                    if "ya tiene una matrícula" in str(ve):
+                    if "ya tiene" in str(ve):
                         pass
                     else:
                         raise ve
@@ -107,5 +75,5 @@ class MassEnrollmentService:
             "processed": success_count + error_count,
             "success": success_count,
             "errors": error_count,
-            "error_details": errors[:10]
+            "error_details": errors[:10],
         }
