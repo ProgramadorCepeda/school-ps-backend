@@ -1,5 +1,4 @@
-from sqlmodel import Session
-
+from aap.core.db import SessionDep
 from app.modules.enrollment.domain.entities import EnrollmentCreated
 from app.modules.enrollment.domain.service import EnrollmentService
 from app.modules.enrollment.infrastructure.repository import (
@@ -10,11 +9,11 @@ from app.modules.enrollment.infrastructure.repository import (
 class RegisterEnrollment:
     """Caso de uso: registrar matrícula automáticamente para un estudiante."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: SessionDep) -> None:
         repository = SQLEnrollmentRepository(session)
-        self._service = EnrollmentService(repository)
+        self.service = EnrollmentService(repository)
 
     def execute(
         self, student_id: int, period_id: int, year: int
     ) -> EnrollmentCreated:
-        return self._service.register_enrollment(student_id, period_id, year)
+        return self.service.register_enrollment(student_id, period_id, year)
