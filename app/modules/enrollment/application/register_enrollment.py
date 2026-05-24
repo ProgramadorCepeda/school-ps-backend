@@ -1,4 +1,4 @@
-from aap.core.db import SessionDep
+from app.core.db import SessionDep
 from app.modules.enrollment.domain.entities import EnrollmentCreated
 from app.modules.enrollment.domain.service import EnrollmentService
 from app.modules.enrollment.infrastructure.repository import (
