@@ -1,5 +1,4 @@
-from sqlmodel import Session
-
+from app.core.db import SessionDep
 from app.modules.enrollment.infrastructure.repository import (
     SQLEnrollmentRepository,
 )
