@@ -1,6 +1,6 @@
 """
 Script de seed para cargar datos de prueba en la BD.
-Ejecutar con: python -m app.seed
+Ejecutar con: python -m scripts.seed
 """
 
 from datetime import datetime

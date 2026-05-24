@@ -12,7 +12,7 @@ from app.modules.enrollment.application.register_enrollment import (
 )
 from app.modules.enrollment.application.mass_enrollment import MassEnrollmentService
 from app.modules.enrollment.domain.service import EnrollmentService
-from app.modules.enrollment.infrastructure.repository_impl import (
+from app.modules.enrollment.infrastructure.repository import (
     SQLEnrollmentRepository,
 )
 from app.modules.enrollment.schemas.request import (
