@@ -7,7 +7,7 @@ from app.modules.enrollment.infrastructure.repository import (
 class CreateComplementary:
     """Caso de uso: crear un concepto complementario nuevo."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: SessionDep) -> None:
         self._repository = SQLEnrollmentRepository(session)
 
     def execute(
