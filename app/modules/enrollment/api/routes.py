@@ -1,19 +1,22 @@
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Query, UploadFile, File
+
 from app.core.db import SessionDep
+from app.modules.enrollment.application.assign_complementary import (
+    AssignComplementary,
+)
+from app.modules.enrollment.application.create_complementary import (
+    CreateComplementary,
+)
 from app.modules.enrollment.application.get_enrollment_balance import (
     GetEnrollmentBalance,
 )
-from app.modules.enrollment.application.process_payment import ProcessDirectedPayment
+from app.modules.enrollment.application.mass_enrollment import MassEnrollmentService
 from app.modules.enrollment.application.modify_enrollment import ModifyEnrollment
+from app.modules.enrollment.application.process_payment import ProcessDirectedPayment
 from app.modules.enrollment.application.register_enrollment import (
     RegisterEnrollment,
-)
-from app.modules.enrollment.application.mass_enrollment import MassEnrollmentService
-from app.modules.enrollment.domain.service import EnrollmentService
-from app.modules.enrollment.infrastructure.repository import (
-    SQLEnrollmentRepository,
 )
 from app.modules.enrollment.schemas.request import (
     DirectedPaymentRequest,
@@ -50,8 +53,8 @@ router = APIRouter(
     ),
 )
 async def get_enrollment_balance(
-    student_id: int,
     session: SessionDep,
+    student_id: int,
     year: int | None = Query(
         default=None,
         description="Año a consultar. Si no se envía, se usa el año actual.",
@@ -60,8 +63,7 @@ async def get_enrollment_balance(
     if year is None:
         year = datetime.now().year
 
-    repository = SQLEnrollmentRepository(session)
-    use_case = GetEnrollmentBalance(repository)
+    use_case = GetEnrollmentBalance(session=session)
 
     try:
         balance = use_case.execute(student_id, year)
@@ -113,11 +115,10 @@ async def get_enrollment_balance(
     ),
 )
 async def register_enrollment(
-    request: RegisterEnrollmentRequest,
     session: SessionDep,
+    request: RegisterEnrollmentRequest,
 ) -> EnrollmentCreatedResponse:
-    repository = SQLEnrollmentRepository(session)
-    use_case = RegisterEnrollment(repository)
+    use_case = RegisterEnrollment(session=session)
 
     try:
         result = use_case.execute(
@@ -161,12 +162,11 @@ async def register_enrollment(
     ),
 )
 async def modify_enrollment(
+    session: SessionDep,
     matricula_id: int,
     request: ModifyEnrollmentRequest,
-    session: SessionDep,
 ) -> dict:
-    repository = SQLEnrollmentRepository(session)
-    use_case = ModifyEnrollment(repository)
+    use_case = ModifyEnrollment(session=session)
 
     try:
         result = use_case.execute(matricula_id, request)
@@ -189,11 +189,10 @@ async def modify_enrollment(
     ),
 )
 async def directed_payment(
-    request: DirectedPaymentRequest,
     session: SessionDep,
+    request: DirectedPaymentRequest,
 ) -> PaymentResultResponse:
-    repository = SQLEnrollmentRepository(session)
-    use_case = ProcessDirectedPayment(repository)
+    use_case = ProcessDirectedPayment(session=session)
 
     asignaciones = [
         (a.concepto, a.complementario_id, a.monto)
@@ -248,15 +247,13 @@ async def directed_payment(
     summary="Registrar matrículas masivamente vía CSV",
 )
 async def register_massive_csv(
+    session: SessionDep,
     periodo_id: int,
     anio: int,
-    session: SessionDep,
     file: UploadFile = File(...),
 ):
-    repository = SQLEnrollmentRepository(session)
-    enrollment_service = EnrollmentService(repository)
-    mass_service = MassEnrollmentService(session, enrollment_service)
-    
+    mass_service = MassEnrollmentService(session=session)
+
     content = await file.read()
     return mass_service.process_csv_file(content, periodo_id, anio)
 
@@ -267,15 +264,13 @@ async def register_massive_csv(
     summary="Registrar matrículas masivamente vía TXT",
 )
 async def register_massive_txt(
+    session: SessionDep,
     periodo_id: int,
     anio: int,
-    session: SessionDep,
     file: UploadFile = File(...),
 ):
-    repository = SQLEnrollmentRepository(session)
-    enrollment_service = EnrollmentService(repository)
-    mass_service = MassEnrollmentService(session, enrollment_service)
-    
+    mass_service = MassEnrollmentService(session=session)
+
     content = await file.read()
     return mass_service.process_txt_file(content, periodo_id, anio)
 
@@ -286,11 +281,11 @@ async def register_massive_txt(
     summary="Crear un concepto complementario nuevo",
 )
 async def create_complementary(
-    request: ComplementaryCreateRequest,
     session: SessionDep,
+    request: ComplementaryCreateRequest,
 ):
-    repository = SQLEnrollmentRepository(session)
-    comp_id = repository.create_complementary(
+    use_case = CreateComplementary(session=session)
+    comp_id = use_case.execute(
         tipo_complementario=request.tipo_complementario,
         anio=request.anio,
         valor=request.valor,
@@ -306,20 +301,19 @@ async def create_complementary(
     summary="Asignar un complementario a una matrícula existente",
 )
 async def assign_complementary(
+    session: SessionDep,
     matricula_id: int,
     request: AssignComplementaryRequest,
-    session: SessionDep,
 ):
-    repository = SQLEnrollmentRepository(session)
-    service = EnrollmentService(repository)
-    
+    use_case = AssignComplementary(session=session)
+
     try:
-        detalle_id = service.assign_complementary(
+        detalle_id = use_case.execute(
             matricula_id=matricula_id,
             complementary_id=request.complementario_id,
-            descuento=request.descuento
+            descuento=request.descuento,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-        
+
     return {"mensaje": "Complementario asignado exitosamente a la matrícula", "detalle_id": detalle_id}

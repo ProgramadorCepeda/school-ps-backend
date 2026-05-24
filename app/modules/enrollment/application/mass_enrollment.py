@@ -6,14 +6,18 @@ from sqlmodel import Session, select
 
 from app.modules.enrollment.domain.service import EnrollmentService
 from app.modules.enrollment.infrastructure.models import Estudiante
+from app.modules.enrollment.infrastructure.repository import (
+    SQLEnrollmentRepository,
+)
 
 
 class MassEnrollmentService:
     """Caso de uso para registrar matrículas masivamente a partir de archivos."""
 
-    def __init__(self, db_session: Session, enrollment_service: EnrollmentService):
-        self._session = db_session
-        self._enrollment_service = enrollment_service
+    def __init__(self, session: Session):
+        self._session = session
+        repository = SQLEnrollmentRepository(session)
+        self._enrollment_service = EnrollmentService(repository)
 
     def process_csv_file(self, content: bytes, period_id: int, year: int) -> dict:
         """
@@ -36,21 +40,17 @@ class MassEnrollmentService:
         error_count = 0
         errors = []
 
-        # Saltar cabecera si existe
         header = next(reader, None)
         if not header:
             return {"status": "error", "message": "El archivo está vacío"}
             
-        # Si la cabecera no parece ser cabecera (es decir, el grado_id es un número), la procesamos.
-        # De lo contrario la ignoramos.
         try:
             int(header[2])
-            # Fue un dato, rebobinamos
             rows = [header] + list(reader)
         except (ValueError, IndexError):
             rows = list(reader)
 
-        for line_idx, row in enumerate(rows, start=2): # +1 por header y +1 por ser 1-indexed
+        for line_idx, row in enumerate(rows, start=2):
             if not row or len(row) < 4:
                 continue
                 
@@ -60,12 +60,10 @@ class MassEnrollmentService:
                 grado_id = int(row[2].strip())
                 acudiente_id = int(row[3].strip())
                 
-                # Buscar si el estudiante existe
                 statement = select(Estudiante).where(Estudiante.documento == documento)
                 estudiante = self._session.exec(statement).first()
                 
                 if not estudiante:
-                    # Crear nuevo estudiante
                     estudiante = Estudiante(
                         documento=documento,
                         nombre=nombre,
@@ -78,14 +76,12 @@ class MassEnrollmentService:
                     self._session.commit()
                     self._session.refresh(estudiante)
                 else:
-                    # Actualizar si cambió grado o acudiente
                     if estudiante.grado_id != grado_id or estudiante.acudiente_id != acudiente_id:
                         estudiante.grado_id = grado_id
                         estudiante.acudiente_id = acudiente_id
                         self._session.add(estudiante)
                         self._session.commit()
                 
-                # Intentar matricular
                 try:
                     if estudiante.id is None:
                         raise ValueError("Estudiante ID no generado")
@@ -97,7 +93,7 @@ class MassEnrollmentService:
                     success_count += 1
                 except ValueError as ve:
                     if "ya tiene una matrícula" in str(ve):
-                        pass # Ignorar si ya está matriculado
+                        pass
                     else:
                         raise ve
 
@@ -110,5 +106,5 @@ class MassEnrollmentService:
             "processed": success_count + error_count,
             "success": success_count,
             "errors": error_count,
-            "error_details": errors[:10] # Solo mostrar los primeros 10 errores
+            "error_details": errors[:10]
         }

@@ -1,13 +1,17 @@
-from app.modules.enrollment.domain.entities import PaymentResult
-from app.modules.enrollment.domain.repositories import EnrollmentRepository
-from app.modules.enrollment.domain.service import EnrollmentService
+from sqlmodel import Session
 
+from app.modules.enrollment.domain.entities import PaymentResult
+from app.modules.enrollment.domain.service import EnrollmentService
+from app.modules.enrollment.infrastructure.repository import (
+    SQLEnrollmentRepository,
+)
 
 
 class ProcessDirectedPayment:
     """Caso de uso: pago con asignación dirigida."""
 
-    def __init__(self, repository: EnrollmentRepository) -> None:
+    def __init__(self, session: Session) -> None:
+        repository = SQLEnrollmentRepository(session)
         self._service = EnrollmentService(repository)
 
     def execute(
