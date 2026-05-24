@@ -1,5 +1,4 @@
-from sqlmodel import Session
-
+from app.core.db import SessionDep
 from app.modules.enrollment.domain.entities import PaymentResult
 from app.modules.enrollment.domain.service import EnrollmentService
 from app.modules.enrollment.infrastructure.repository import (
@@ -10,9 +9,9 @@ from app.modules.enrollment.infrastructure.repository import (
 class ProcessDirectedPayment:
     """Caso de uso: pago con asignación dirigida."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: SessionDep) -> None:
         repository = SQLEnrollmentRepository(session)
-        self._service = EnrollmentService(repository)
+        self.service = EnrollmentService(repository)
 
     def execute(
         self,
@@ -21,6 +20,6 @@ class ProcessDirectedPayment:
         codigo_talonario: str,
         observacion: str | None = None,
     ) -> PaymentResult:
-        return self._service.process_directed_payment(
+        return self.service.process_directed_payment(
             matricula_id, asignaciones, codigo_talonario, observacion
         )
