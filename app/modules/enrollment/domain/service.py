@@ -177,6 +177,11 @@ class EnrollmentService:
             delta_total += (request.nuevo_costo_base - pending_base)
             nuevo_base = request.nuevo_costo_base
         elif request.descuento_base is not None:
+            if request.descuento_base > pending_base:
+                raise ValueError(
+                    f"El descuento de base (${request.descuento_base:,}) no puede ser mayor "
+                    f"al costo base pendiente (${pending_base:,})"
+                )
             delta_total -= request.descuento_base
             nuevo_base -= request.descuento_base
 
@@ -204,6 +209,11 @@ class EnrollmentService:
                     nuevo_comp_pending = mod.nuevo_valor_completo
                     nuevo_completo = mod.nuevo_valor_completo
                 elif mod.descuento is not None:
+                    if mod.descuento > comp_pending:
+                        raise ValueError(
+                            f"El descuento (${mod.descuento:,}) no puede ser mayor "
+                            f"al valor pendiente del complementario (${comp_pending:,})"
+                        )
                     delta_total -= mod.descuento
                     nuevo_comp_pending -= mod.descuento
                     nuevo_descuento = mod.descuento

@@ -43,6 +43,10 @@ class MassEnrollment:
             try:
                 documento = row[0].strip()
                 nombre = row[1].strip()
+                if not documento:
+                    raise ValueError("El documento del estudiante no puede estar vacío")
+                if not nombre:
+                    raise ValueError("El nombre del estudiante no puede estar vacío")
                 grado_id = int(row[2].strip())
                 acudiente_id = int(row[3].strip())
 

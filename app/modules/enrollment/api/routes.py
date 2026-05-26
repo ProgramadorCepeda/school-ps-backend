@@ -252,6 +252,11 @@ async def register_massive_csv(
     anio: int,
     file: UploadFile = File(...),
 ):
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise HTTPException(
+            status_code=400,
+            detail="Archivo inválido. Solo se admiten archivos con extensión .csv"
+        )
     use_case = MassEnrollment(session=session)
 
     content = await file.read()
@@ -269,6 +274,11 @@ async def register_massive_txt(
     anio: int,
     file: UploadFile = File(...),
 ):
+    if not file.filename or not file.filename.lower().endswith(".txt"):
+        raise HTTPException(
+            status_code=400,
+            detail="Archivo inválido. Solo se admiten archivos con extensión .txt"
+        )
     use_case = MassEnrollment(session=session)
 
     content = await file.read()
