@@ -435,7 +435,8 @@ class SQLEnrollmentRepository(EnrollmentRepository):
         self, documento: str | None, nombre: str | None
     ) -> list[StudentInfo]:
         statement = select(Estudiante, Grado).join(
-            Grado, Estudiante.grado_id == Grado.id
+            Grado,
+            Estudiante.grado_id == Grado.id,  # type: ignore[arg-type]
         )
         if documento:
             statement = statement.where(
