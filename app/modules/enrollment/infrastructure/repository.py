@@ -426,6 +426,11 @@ class SQLEnrollmentRepository(EnrollmentRepository):
         results = self._session.exec(statement).all()
         return len(results)
 
+    def get_total_paid(self, matricula_id: int) -> int:
+        statement = select(Pago).where(Pago.matricula_id == matricula_id)
+        results = self._session.exec(statement).all()
+        return sum(p.monto_total for p in results)
+
     def search_students(
         self, documento: str | None, nombre: str | None
     ) -> list[StudentInfo]:

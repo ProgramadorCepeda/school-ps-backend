@@ -224,6 +224,11 @@ class EnrollmentRepository(ABC):
         ...
 
     @abstractmethod
+    def get_total_paid(self, matricula_id: int) -> int:
+        """Retorna la suma total de pagos registrados para una matrícula."""
+        ...
+
+    @abstractmethod
     def search_students(
         self, documento: str | None, nombre: str | None
     ) -> list[StudentInfo]:
