@@ -44,6 +44,7 @@ class EnrollmentService:
         enrollment_exists = matricula_id is not None
 
         complementary_total = sum(item.valor_completo for item in complementary_items)
+        payments_count = 0
 
         if enrollment_exists:
             # Usar valor_total real de la matrícula (se actualiza con descuentos)
@@ -51,6 +52,8 @@ class EnrollmentService:
             total_pending = pending_base + sum(
                 item.valor_pendiente for item in complementary_items
             )
+            assert matricula_id is not None
+            payments_count = self.repo.get_payments_count(matricula_id)
         else:
             # Sin matrícula: usar costo parametrizado
             total_cost = base_cost + complementary_total
@@ -70,6 +73,7 @@ class EnrollmentService:
             enrollment_status=enrollment_status,
             enrollment_exists=enrollment_exists,
             pending_base=pending_base,
+            payments_count=payments_count,
         )
 
     def register_enrollment(

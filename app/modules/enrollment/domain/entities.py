@@ -43,6 +43,7 @@ class EnrollmentBalance:
     enrollment_status: str = "sin_abono"
     enrollment_exists: bool = False
     pending_base: int = 0
+    payments_count: int = 0
 
 
 @dataclass
