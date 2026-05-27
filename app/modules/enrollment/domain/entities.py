@@ -44,6 +44,7 @@ class EnrollmentBalance:
     enrollment_exists: bool = False
     pending_base: int = 0
     payments_count: int = 0
+    matricula_id: int | None = None
 
 
 @dataclass

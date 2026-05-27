@@ -39,6 +39,7 @@ class EnrollmentBalanceResponse(BaseModel):
     matricula_registrada: bool
     pendiente_base: int
     pagos_realizados: int
+    matricula_id: int | None = None
 
 
 class EnrollmentCreatedResponse(BaseModel):

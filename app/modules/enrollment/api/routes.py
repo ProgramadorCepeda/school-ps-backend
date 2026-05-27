@@ -104,6 +104,7 @@ async def get_enrollment_balance(
         matricula_registrada=balance.enrollment_exists,
         pendiente_base=balance.pending_base,
         pagos_realizados=balance.payments_count,
+        matricula_id=balance.matricula_id,
     )
 
 

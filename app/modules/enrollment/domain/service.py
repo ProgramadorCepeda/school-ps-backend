@@ -74,6 +74,7 @@ class EnrollmentService:
             enrollment_exists=enrollment_exists,
             pending_base=pending_base,
             payments_count=payments_count,
+            matricula_id=matricula_id,
         )
 
     def register_enrollment(
