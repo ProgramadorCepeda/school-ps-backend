@@ -244,6 +244,7 @@ class EnrollmentService:
             "matricula_id": matricula_id,
             "nuevo_valor_total": nuevo_valor_total,
             "motivo_registrado": request.motivo,
+            "observaciones_registradas": request.observaciones,
         }
 
     def process_directed_payment(
