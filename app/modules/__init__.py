@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.modules.auth.api.routes import router as auth
 from app.modules.enrollment.api.routes import router as enrollment
 from app.modules.health.api.routes import router as health
 from app.modules.inventory.api.routes import router as inventory
@@ -19,3 +20,4 @@ router.include_router(enrollment, prefix="/enrollment", tags=["enrollment"])
 router.include_router(principal, prefix="/principal", tags=["principal"])
 router.include_router(tuition, prefix="/tuition", tags=["tuition"])
 router.include_router(classroom, prefix="/classroom", tags=["classroom"])
+router.include_router(auth, prefix="/auth", tags=["auth"])
