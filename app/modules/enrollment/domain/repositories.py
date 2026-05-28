@@ -217,3 +217,20 @@ class EnrollmentRepository(ABC):
     ) -> int:
         """Busca un estudiante por documento; si no existe lo crea. Retorna el ID."""
         ...
+
+    @abstractmethod
+    def get_payments_count(self, matricula_id: int) -> int:
+        """Retorna la cantidad de pagos registrados para una matrícula."""
+        ...
+
+    @abstractmethod
+    def get_total_paid(self, matricula_id: int) -> int:
+        """Retorna la suma total de pagos registrados para una matrícula."""
+        ...
+
+    @abstractmethod
+    def search_students(
+        self, documento: str | None, nombre: str | None
+    ) -> list[StudentInfo]:
+        """Busca estudiantes por coincidencia parcial en documento o nombre."""
+        ...
