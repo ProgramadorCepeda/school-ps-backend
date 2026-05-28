@@ -251,7 +251,7 @@ class EnrollmentService:
     def process_directed_payment(
         self,
         matricula_id: int,
-        asignaciones: list[tuple[str, int | None, int]],
+        asignaciones: list[tuple[str, int | None, int | None, int]],
         codigo_talonario: str,
         observacion: str | None = None,
     ) -> PaymentResult:
@@ -262,7 +262,7 @@ class EnrollmentService:
         Valida que no se pague más de lo pendiente por concepto.
 
         Args:
-            asignaciones: Lista de (concepto, complementario_id, monto).
+            asignaciones: Lista de (concepto, complementario_id, detalle_id, monto).
         """
         enrollment = self.repo.get_enrollment_by_id(matricula_id)
         if enrollment is None:
@@ -291,12 +291,12 @@ class EnrollmentService:
         ) = enrollment
 
         comp_details = self.repo.get_enrollment_complementary_details(matricula_id)
-        comp_pending_map = {comp_id: pend for _, comp_id, _, pend, _, _ in comp_details}
+        comp_pending_map = {det_id: pend for det_id, _, _, pend, _, _ in comp_details}
 
         monto_total = 0
         distribuciones: list[PaymentAllocation] = []
 
-        for concepto, comp_id, monto in asignaciones:
+        for concepto, comp_id, detalle_id, monto in asignaciones:
             if monto <= 0:
                 msg = f"El monto para '{concepto}' debe ser mayor a 0"
                 raise ValueError(msg)
@@ -313,18 +313,42 @@ class EnrollmentService:
                 pending_base = new_pending
 
             elif concepto.startswith("complementario") and comp_id is not None:
-                current_pending = comp_pending_map.get(comp_id, 0)
+                target_det_id = detalle_id
+                if target_det_id is None:
+                    matching_details = [
+                        det_id
+                        for det_id, c_id, _, _, _, _ in comp_details
+                        if c_id == comp_id and comp_pending_map.get(det_id, 0) > 0
+                    ]
+                    if matching_details:
+                        target_det_id = matching_details[0]
+                    else:
+                        matching_details = [
+                            det_id
+                            for det_id, c_id, _, _, _, _ in comp_details
+                            if c_id == comp_id
+                        ]
+                        if matching_details:
+                            target_det_id = matching_details[0]
+
+                if target_det_id is None:
+                    msg = (
+                        f"No se encontró asignación para el complementario ID {comp_id}"
+                    )
+                    raise ValueError(msg)
+
+                current_pending = comp_pending_map.get(target_det_id, 0)
                 if monto > current_pending:
                     msg = (
                         f"Monto ${monto:,} excede el pendiente del "
-                        f"complementario ID {comp_id} (${current_pending:,})"
+                        f"complementario ID {comp_id} (detalle ID {target_det_id}): ${current_pending:,}"
                     )
                     raise ValueError(msg)
                 new_pending = current_pending - monto
                 self.repo.update_complementary_pending(
-                    matricula_id, comp_id, new_pending
+                    matricula_id, comp_id, new_pending, target_det_id
                 )
-                comp_pending_map[comp_id] = new_pending
+                comp_pending_map[target_det_id] = new_pending
             else:
                 msg = f"Concepto '{concepto}' no reconocido"
                 raise ValueError(msg)

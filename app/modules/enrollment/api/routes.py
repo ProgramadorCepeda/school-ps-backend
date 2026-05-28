@@ -253,7 +253,8 @@ async def directed_payment(
     use_case = ProcessDirectedPayment(session=session)
 
     asignaciones = [
-        (a.concepto, a.complementario_id, a.monto) for a in request.asignaciones
+        (a.concepto, a.complementario_id, a.detalle_id, a.monto)
+        for a in request.asignaciones
     ]
 
     try:

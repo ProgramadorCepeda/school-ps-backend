@@ -273,12 +273,21 @@ class SQLEnrollmentRepository(EnrollmentRepository):
         self._session.flush()
 
     def update_complementary_pending(
-        self, matricula_id: int, complementario_id: int, new_pending: int
+        self,
+        matricula_id: int,
+        complementario_id: int,
+        new_pending: int,
+        detalle_id: int | None = None,
     ) -> None:
-        statement = select(DetalleMatricula).where(
-            DetalleMatricula.matricula_id == matricula_id,
-            DetalleMatricula.complementario_id == complementario_id,
-        )
+        if detalle_id is not None:
+            statement = select(DetalleMatricula).where(
+                DetalleMatricula.id == detalle_id
+            )
+        else:
+            statement = select(DetalleMatricula).where(
+                DetalleMatricula.matricula_id == matricula_id,
+                DetalleMatricula.complementario_id == complementario_id,
+            )
         det = self._session.exec(statement).one()
         det.valor_pendiente = new_pending
         self._session.add(det)

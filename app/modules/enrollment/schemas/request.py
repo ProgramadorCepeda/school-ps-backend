@@ -73,6 +73,10 @@ class ConceptoAsignacion(BaseModel):
         default=None,
         description="ID del complementario (obligatorio si concepto='complementario')",
     )
+    detalle_id: int | None = Field(
+        default=None,
+        description="ID del detalle de matrícula (opcional)",
+    )
     monto: int = Field(gt=0, description="Monto a aplicar a este concepto")
 
 

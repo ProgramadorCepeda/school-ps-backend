@@ -141,7 +141,11 @@ class EnrollmentRepository(ABC):
 
     @abstractmethod
     def update_complementary_pending(
-        self, matricula_id: int, complementario_id: int, new_pending: int
+        self,
+        matricula_id: int,
+        complementario_id: int,
+        new_pending: int,
+        detalle_id: int | None = None,
     ) -> None:
         """Actualiza el valor_pendiente de un detalle_matricula."""
         ...
