@@ -57,7 +57,7 @@ def test_login_success(session, client):
     json_data = response.json()
     assert json_data["mensaje"] == "Inicio de sesión exitoso"
     assert json_data["usuario"]["username"] == "user1"
-    assert json_data["usuario"]["rol"] == "Matrícula"
+    assert json_data["usuario"]["rol"] == "Tesorería"
     assert json_data["usuario"]["estado"] is True
     assert "token" in json_data
     assert json_data["token"].startswith("session_token_")

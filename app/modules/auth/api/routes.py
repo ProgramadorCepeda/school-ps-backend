@@ -27,7 +27,7 @@ async def login(
     use_case = LoginUser(session=session)
 
     try:
-        user, token = use_case.execute(request)
+        user, token, rol = use_case.execute(request)
     except ValueError as e:
         error_msg = str(e)
         if "incorrectos" in error_msg:
@@ -46,7 +46,7 @@ async def login(
         usuario=UserResponse(
             id=user.id,
             username=user.username,
-            rol=user.rol,
+            rol=rol,
             estado=user.estado,
         ),
         token=token,
