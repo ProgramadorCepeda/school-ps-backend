@@ -136,3 +136,14 @@ class PaymentReceiptResponse(BaseModel):
     estudiante: StudentReceiptInfo
     acudiente: AcudienteReceiptInfo
     distribuciones: list[PaymentDistributionResponse]
+
+
+class ComplementaryConceptResponse(BaseModel):
+    """DTO para un concepto complementario."""
+
+    id: int
+    tipo_complementario: str
+    anio: int
+    valor: int
+    estado_complemento: str
+    uso_matricula: bool

@@ -25,6 +25,7 @@ from app.modules.enrollment.application.get_payment_receipt import GetPaymentRec
 from app.modules.enrollment.application.disassociate_complementary import (
     DisassociateComplementary,
 )
+from app.modules.enrollment.application.get_complementaries import GetComplementaries
 from app.modules.enrollment.schemas.request import (
     DirectedPaymentRequest,
     RegisterEnrollmentRequest,
@@ -44,6 +45,7 @@ from app.modules.enrollment.schemas.response import (
     StudentSearchListResponse,
     PaymentHistoryItemResponse,
     PaymentReceiptResponse,
+    ComplementaryConceptResponse,
 )
 
 router = APIRouter(
@@ -506,3 +508,31 @@ async def disassociate_complementary(
         "detalle_id": detalle_id,
         "matricula_id": matricula_id,
     }
+
+
+@router.get(
+    "/complementary",
+    response_model=list[ComplementaryConceptResponse],
+    summary="Listar todos los conceptos complementarios disponibles",
+    description="Retorna una lista de todos los conceptos complementarios registrados en el sistema, opcionalmente filtrados por año.",
+)
+async def get_complementaries(
+    session: SessionDep,
+    year: int | None = Query(
+        default=None,
+        description="Año para filtrar los conceptos complementarios.",
+    ),
+) -> list[ComplementaryConceptResponse]:
+    use_case = GetComplementaries(session=session)
+    results = use_case.execute(year=year)
+    return [
+        ComplementaryConceptResponse(
+            id=item.id,
+            tipo_complementario=item.tipo_complementario,
+            anio=item.anio,
+            valor=item.valor,
+            estado_complemento=item.estado_complemento,
+            uso_matricula=item.uso_matricula,
+        )
+        for item in results
+    ]

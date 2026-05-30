@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from app.modules.enrollment.domain.entities import (
     ComplementaryDetail,
     StudentInfo,
+    ComplementaryConcept,
 )
 
 
@@ -291,4 +292,11 @@ class EnrollmentRepository(ABC):
     @abstractmethod
     def decrease_enrollment_total_value(self, matricula_id: int, amount: int) -> None:
         """Disminuye el valor total de una matrícula."""
+        ...
+
+    @abstractmethod
+    def get_all_complementaries(
+        self, year: int | None = None
+    ) -> list[ComplementaryConcept]:
+        """Obtiene todos los conceptos complementarios registrados, opcionalmente filtrados por año."""
         ...
