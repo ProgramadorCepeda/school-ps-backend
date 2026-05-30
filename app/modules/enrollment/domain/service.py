@@ -477,3 +477,56 @@ class EnrollmentService:
             grado_id=grado_id,
             acudiente_id=acudiente_id,
         )
+
+    def resolve_grade_id(self, grado_str: str) -> int:
+        grado_str = grado_str.strip()
+        try:
+            val = int(grado_str)
+            return val
+        except ValueError:
+            val_id = self.repo.get_grade_by_name(grado_str)
+            if val_id is None:
+                raise ValueError(f"El grado '{grado_str}' no existe")
+            return val_id
+
+    def resolve_or_create_acudiente(self, acudiente_str: str) -> int:
+        acudiente_str = acudiente_str.strip()
+        try:
+            val = int(acudiente_str)
+            return val
+        except ValueError:
+            ac_id = self.repo.get_acudiente_by_name(acudiente_str)
+            if ac_id is None:
+                ac_id = self.repo.create_acudiente(
+                    nombre=acudiente_str,
+                    parentesco="Representante",
+                    telefono="No registrado",
+                    correo="no_registrado@correo.com",
+                )
+            return ac_id
+
+    def manual_enrollment(
+        self,
+        documento: str,
+        nombre: str,
+        grado_str: str,
+        nombre_acudiente: str,
+        period_id: int,
+        year: int,
+    ) -> int:
+        grado_id = self.resolve_grade_id(grado_str)
+        acudiente_id = self.resolve_or_create_acudiente(nombre_acudiente)
+
+        student_id = self.repo.find_or_create_student(
+            documento=documento.strip(),
+            nombre=nombre.strip(),
+            grado_id=grado_id,
+            acudiente_id=acudiente_id,
+        )
+
+        result = self.register_enrollment(
+            student_id=student_id,
+            period_id=period_id,
+            year=year,
+        )
+        return result.matricula_id

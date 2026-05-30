@@ -43,8 +43,11 @@ class MassEnrollment:
             try:
                 documento = row[0].strip()
                 nombre = row[1].strip()
-                grado_id = int(row[2].strip())
-                acudiente_id = int(row[3].strip())
+                grado_str = row[2].strip()
+                acudiente_str = row[3].strip()
+
+                grado_id = self._service.resolve_grade_id(grado_str)
+                acudiente_id = self._service.resolve_or_create_acudiente(acudiente_str)
 
                 student_id = self._service.find_or_create_student(
                     documento=documento,

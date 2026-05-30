@@ -238,3 +238,42 @@ class EnrollmentRepository(ABC):
     ) -> list[StudentInfo]:
         """Busca estudiantes por coincidencia parcial en documento o nombre."""
         ...
+
+    # === Nuevas Consultas y Acciones ===
+
+    @abstractmethod
+    def get_grade_by_name(self, name: str) -> int | None:
+        """Busca un grado por su nombre (insensible a mayúsculas). Retorna su ID."""
+        ...
+
+    @abstractmethod
+    def get_acudiente_by_name(self, name: str) -> int | None:
+        """Busca un acudiente por su nombre. Retorna su ID."""
+        ...
+
+    @abstractmethod
+    def create_acudiente(
+        self, nombre: str, parentesco: str, telefono: str, correo: str
+    ) -> int:
+        """Crea un acudiente y retorna su ID."""
+        ...
+
+    @abstractmethod
+    def get_payments_by_matricula(self, matricula_id: int) -> list:
+        """Retorna todos los pagos (Pago) de una matrícula."""
+        ...
+
+    @abstractmethod
+    def get_payment_by_id(self, pago_id: int) -> tuple | None:
+        """Retorna un pago por su ID como tupla (id, matricula_id, codigo_talonario, monto_total, fecha_pago, observacion)."""
+        ...
+
+    @abstractmethod
+    def get_payment_details(self, pago_id: int) -> list[tuple[str, int | None, int]]:
+        """Retorna los detalles de un pago como lista de (concepto, complementario_id, monto_aplicado)."""
+        ...
+
+    @abstractmethod
+    def get_payment_receipt_data(self, pago_id: int) -> dict | None:
+        """Retorna los datos completos estructurados de un recibo de pago."""
+        ...

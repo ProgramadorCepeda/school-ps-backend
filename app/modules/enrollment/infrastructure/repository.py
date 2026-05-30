@@ -8,6 +8,7 @@ from app.modules.enrollment.domain.entities import (
 )
 from app.modules.enrollment.domain.repositories import EnrollmentRepository
 from app.modules.enrollment.infrastructure.models import (
+    Acudiente,
     Complementario,
     DetalleMatricula,
     Estudiante,
@@ -467,3 +468,106 @@ class SQLEnrollmentRepository(EnrollmentRepository):
             for est, gra in results
             if est.id is not None and est.grado_id is not None
         ]
+
+    # === Nuevas Consultas y Acciones ===
+
+    def get_grade_by_name(self, name: str) -> int | None:
+        statement = select(Grado).where(col(Grado.nombre).ilike(name.strip()))
+        grade = self._session.exec(statement).first()
+        return grade.id if grade else None
+
+    def get_acudiente_by_name(self, name: str) -> int | None:
+        statement = select(Acudiente).where(col(Acudiente.nombre).ilike(name.strip()))
+        acudiente = self._session.exec(statement).first()
+        return acudiente.id if acudiente else None
+
+    def create_acudiente(
+        self, nombre: str, parentesco: str, telefono: str, correo: str
+    ) -> int:
+        acudiente = Acudiente(
+            nombre=nombre.strip(),
+            parentesco=parentesco.strip(),
+            telefono=telefono.strip(),
+            correo=correo.strip(),
+        )
+        self._session.add(acudiente)
+        self._session.commit()
+        assert acudiente.id is not None
+        return acudiente.id
+
+    def get_payments_by_matricula(self, matricula_id: int) -> list:
+        statement = (
+            select(Pago)
+            .where(Pago.matricula_id == matricula_id)
+            .order_by(Pago.fecha_pago.desc())
+        )
+        return self._session.exec(statement).all()
+
+    def get_payment_by_id(self, pago_id: int) -> tuple | None:
+        statement = select(Pago).where(Pago.id == pago_id)
+        pago = self._session.exec(statement).first()
+        if pago:
+            return (
+                pago.id,
+                pago.matricula_id,
+                pago.codigo_talonario,
+                pago.monto_total,
+                pago.fecha_pago,
+                pago.observacion,
+            )
+        return None
+
+    def get_payment_details(self, pago_id: int) -> list[tuple[str, int | None, int]]:
+        statement = select(PagoDetalle).where(PagoDetalle.pago_id == pago_id)
+        details = self._session.exec(statement).all()
+        return [(d.concepto, d.complementario_id, d.monto_aplicado) for d in details]
+
+    def get_payment_receipt_data(self, pago_id: int) -> dict | None:
+        statement = (
+            select(Pago, Matricula, Estudiante, Grado, Acudiente)
+            .join(Matricula, Pago.matricula_id == Matricula.id)
+            .join(Estudiante, Matricula.estudiante_id == Estudiante.id)
+            .join(Grado, Estudiante.grado_id == Grado.id)
+            .join(Acudiente, Estudiante.acudiente_id == Acudiente.id)
+            .where(Pago.id == pago_id)
+        )
+        result = self._session.exec(statement).first()
+        if not result:
+            return None
+        pago, matricula, estudiante, grado, acudiente = result
+
+        det_statement = select(PagoDetalle).where(PagoDetalle.pago_id == pago_id)
+        details = self._session.exec(det_statement).all()
+
+        distribuciones = []
+        for d in details:
+            concepto_name = d.concepto
+            if d.complementario_id is not None:
+                comp = self._session.get(Complementario, d.complementario_id)
+                if comp:
+                    concepto_name = comp.tipo_complementario
+            distribuciones.append(
+                {
+                    "concepto": concepto_name,
+                    "complementario_id": d.complementario_id,
+                    "monto_aplicado": d.monto_aplicado,
+                }
+            )
+
+        return {
+            "pago_id": pago.id,
+            "codigo_talonario": pago.codigo_talonario,
+            "monto_total": pago.monto_total,
+            "fecha_pago": pago.fecha_pago,
+            "observacion": pago.observacion,
+            "estudiante": {
+                "id": estudiante.id,
+                "nombre": estudiante.nombre,
+                "documento": estudiante.documento,
+                "grado": grado.nombre,
+            },
+            "acudiente": {
+                "nombre": acudiente.nombre,
+            },
+            "distribuciones": distribuciones,
+        }

@@ -19,12 +19,16 @@ from app.modules.enrollment.application.register_enrollment import (
     RegisterEnrollment,
 )
 from app.modules.enrollment.application.search_students import SearchStudents
+from app.modules.enrollment.application.manual_enrollment import ManualEnrollment
+from app.modules.enrollment.application.get_payment_history import GetPaymentHistory
+from app.modules.enrollment.application.get_payment_receipt import GetPaymentReceipt
 from app.modules.enrollment.schemas.request import (
     DirectedPaymentRequest,
     RegisterEnrollmentRequest,
     ModifyEnrollmentRequest,
     ComplementaryCreateRequest,
     AssignComplementaryRequest,
+    ManualEnrollmentRequest,
 )
 from app.modules.enrollment.schemas.response import (
     ComplementaryItemResponse,
@@ -35,6 +39,8 @@ from app.modules.enrollment.schemas.response import (
     StudentInfoResponse,
     StudentSearchItemResponse,
     StudentSearchListResponse,
+    PaymentHistoryItemResponse,
+    PaymentReceiptResponse,
 )
 
 router = APIRouter(
@@ -391,3 +397,83 @@ async def assign_complementary(
         "mensaje": "Complementario asignado exitosamente a la matrícula",
         "detalle_id": detalle_id,
     }
+
+
+@router.post(
+    "/students/manual",
+    status_code=201,
+    summary="Registrar y matricular manualmente a un estudiante",
+)
+async def manual_enrollment(
+    session: SessionDep,
+    request: ManualEnrollmentRequest,
+):
+    use_case = ManualEnrollment(session=session)
+    try:
+        matricula_id = use_case.execute(
+            documento=request.documento,
+            nombre=request.nombre,
+            grado_str=request.grado,
+            nombre_acudiente=request.nombre_acudiente,
+            periodo_id=request.periodo_id,
+            anio=request.anio,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    return {
+        "mensaje": "Estudiante matriculado manualmente de forma exitosa",
+        "matricula_id": matricula_id,
+    }
+
+
+@router.get(
+    "/students/{student_id}/payments",
+    response_model=list[PaymentHistoryItemResponse],
+    summary="Obtener el historial de pagos (auditoría) de un estudiante",
+)
+async def get_payment_history(
+    session: SessionDep,
+    student_id: int,
+    year: int | None = Query(
+        default=None,
+        description="Año a consultar. Si no se envía, se usa el año actual.",
+    ),
+) -> list[PaymentHistoryItemResponse]:
+    if year is None:
+        year = datetime.now().year
+
+    use_case = GetPaymentHistory(session=session)
+    try:
+        payments = use_case.execute(student_id, year)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+    return [
+        PaymentHistoryItemResponse(
+            id=p.id,
+            codigo_talonario=p.codigo_talonario,
+            monto_total=p.monto_total,
+            fecha_pago=p.fecha_pago,
+            observacion=p.observacion,
+        )
+        for p in payments
+    ]
+
+
+@router.get(
+    "/payments/{pago_id}/receipt",
+    response_model=PaymentReceiptResponse,
+    summary="Obtener los datos del comprobante de pago por ID",
+)
+async def get_payment_receipt(
+    session: SessionDep,
+    pago_id: int,
+) -> PaymentReceiptResponse:
+    use_case = GetPaymentReceipt(session=session)
+    try:
+        receipt_data = use_case.execute(pago_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+    return PaymentReceiptResponse(**receipt_data)
