@@ -571,3 +571,31 @@ class SQLEnrollmentRepository(EnrollmentRepository):
             },
             "distribuciones": distribuciones,
         }
+
+    def get_detalle_matricula(self, detalle_id: int) -> tuple | None:
+        statement = select(DetalleMatricula).where(DetalleMatricula.id == detalle_id)
+        det = self._session.exec(statement).first()
+        if det is None:
+            return None
+        return (
+            det.id,
+            det.matricula_id,
+            det.valor_completo,
+            det.descuento,
+            det.valor_pendiente,
+        )
+
+    def delete_detalle_matricula(self, detalle_id: int) -> None:
+        statement = select(DetalleMatricula).where(DetalleMatricula.id == detalle_id)
+        det = self._session.exec(statement).first()
+        if det:
+            self._session.delete(det)
+            self._session.commit()
+
+    def decrease_enrollment_total_value(self, matricula_id: int, amount: int) -> None:
+        statement = select(Matricula).where(Matricula.id == matricula_id)
+        mat = self._session.exec(statement).first()
+        if mat:
+            mat.valor_total -= amount
+            self._session.add(mat)
+            self._session.commit()

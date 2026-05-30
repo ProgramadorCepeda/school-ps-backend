@@ -277,3 +277,18 @@ class EnrollmentRepository(ABC):
     def get_payment_receipt_data(self, pago_id: int) -> dict | None:
         """Retorna los datos completos estructurados de un recibo de pago."""
         ...
+
+    @abstractmethod
+    def get_detalle_matricula(self, detalle_id: int) -> tuple | None:
+        """Obtiene un detalle de matrícula por su ID como tupla (id, matricula_id, valor_completo, descuento, valor_pendiente)."""
+        ...
+
+    @abstractmethod
+    def delete_detalle_matricula(self, detalle_id: int) -> None:
+        """Elimina un detalle de matrícula de la base de datos."""
+        ...
+
+    @abstractmethod
+    def decrease_enrollment_total_value(self, matricula_id: int, amount: int) -> None:
+        """Disminuye el valor total de una matrícula."""
+        ...

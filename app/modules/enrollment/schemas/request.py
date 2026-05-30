@@ -151,7 +151,9 @@ class ManualEnrollmentRequest(BaseModel):
     @classmethod
     def validate_documento(cls, v: str) -> str:
         if not v.strip().isdigit():
-            raise ValueError("El documento / ID del estudiante debe contener únicamente números")
+            raise ValueError(
+                "El documento / ID del estudiante debe contener únicamente números"
+            )
         return v
 
     @field_validator("nombre", "nombre_acudiente")

@@ -428,6 +428,41 @@ class EnrollmentService:
 
         return detalle_id
 
+    def disassociate_complementary(self, detalle_id: int) -> int:
+        """
+        Desvincula un concepto complementario de la matrícula de un estudiante.
+
+        Valida que no existan abonos (pagos) aplicados al concepto.
+        Si es válido, elimina el detalle, decrementa el valor_total de la matrícula y
+        actualiza el estado de la matrícula.
+
+        Returns:
+            matricula_id de la matrícula afectada.
+        """
+        detalle = self.repo.get_detalle_matricula(detalle_id)
+        if detalle is None:
+            raise ValueError("Detalle de matrícula no encontrado")
+
+        det_id, matricula_id, valor_completo, descuento, valor_pendiente = detalle
+
+        # Validar que no se hayan registrado pagos (abonos) para este concepto
+        valor_neto = valor_completo - descuento
+        if valor_pendiente != valor_neto:
+            raise ValueError(
+                "No se puede desvincular un concepto que ya tiene abonos registrados"
+            )
+
+        # Eliminar el detalle de matrícula
+        self.repo.delete_detalle_matricula(detalle_id)
+
+        # Decrementar el valor total de la matrícula
+        self.repo.decrease_enrollment_total_value(matricula_id, valor_neto)
+
+        # Recalcular el estado de la matrícula (semafórico)
+        self._update_enrollment_state(matricula_id)
+
+        return matricula_id
+
     def _update_enrollment_state(self, matricula_id: int) -> None:
         """Calcula y actualiza el estado semáfórico de la matrícula.
 

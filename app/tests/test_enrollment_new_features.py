@@ -261,7 +261,9 @@ def test_manual_enrollment_validators(session, client):
         "periodo_id": 1,
         "anio": 2026,
     }
-    response = client.post("/api/v1/enrollment/students/manual", json=payload_letters_doc)
+    response = client.post(
+        "/api/v1/enrollment/students/manual", json=payload_letters_doc
+    )
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     assert "únicamente números" in response.text
 
@@ -287,7 +289,171 @@ def test_manual_enrollment_validators(session, client):
         "periodo_id": 1,
         "anio": 2026,
     }
-    response = client.post("/api/v1/enrollment/students/manual", json=payload_num_acudiente)
+    response = client.post(
+        "/api/v1/enrollment/students/manual", json=payload_num_acudiente
+    )
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     assert "no pueden contener números" in response.text
 
+
+def test_disassociate_complementary_success(session, client):
+    # 1. Seed necessary parametrization
+    grado = Grado(nombre="Primero")
+    acudiente = Acudiente(
+        nombre="Acudiente Test", parentesco="Padre", telefono="123", correo="t@t.com"
+    )
+    session.add(grado)
+    session.add(acudiente)
+    session.commit()
+    session.refresh(grado)
+    session.refresh(acudiente)
+
+    periodo = Periodo(
+        periodo_electivo=datetime.now(), estado=True, fecha=datetime.now()
+    )
+    session.add(periodo)
+    session.commit()
+    session.refresh(periodo)
+
+    param = ParametrizarMatricula(grado_id=grado.id, anio=2026, valor=500000)
+    session.add(param)
+
+    comp = Complementario(
+        tipo_complementario="Transporte",
+        anio=2026,
+        valor=150000,
+        estado_complemento="Activo",
+        uso_matricula=True,
+    )
+    session.add(comp)
+    session.commit()
+    session.refresh(comp)
+
+    # 2. Register student and enrollment
+    estudiante = Estudiante(
+        grado_id=grado.id,
+        acudiente_id=acudiente.id,
+        nombre="Estudiante Test",
+        documento="987654321",
+        activo=True,
+        fecha_activo=datetime.now(),
+    )
+    session.add(estudiante)
+    session.commit()
+    session.refresh(estudiante)
+
+    # Register enrollment
+    resp_enroll = client.post(
+        "/api/v1/enrollment/register",
+        json={"estudiante_id": estudiante.id, "periodo_id": periodo.id, "anio": 2026},
+    )
+    assert resp_enroll.status_code == status.HTTP_201_CREATED
+    enroll_data = resp_enroll.json()
+    matricula_id = enroll_data["matricula_id"]
+
+    # Get details
+    details = enroll_data["complementarios"]
+    assert len(details) == 1
+    detalle_id = details[0]["detalle_id"]
+    valor_total_inicial = enroll_data["valor_total"]
+    assert valor_total_inicial == 650000  # 500k + 150k
+
+    # 3. Disassociate the complementary concept
+    response = client.delete(f"/api/v1/enrollment/details/{detalle_id}")
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["detalle_id"] == detalle_id
+    assert response.json()["matricula_id"] == matricula_id
+
+    # 4. Verify enrollment in DB has decreased total value
+    from app.modules.enrollment.infrastructure.models import Matricula, DetalleMatricula
+
+    mat = session.query(Matricula).filter(Matricula.id == matricula_id).first()
+    assert mat.valor_total == 500000  # 650k - 150k
+
+    # Verify Detail is deleted
+    det = (
+        session.query(DetalleMatricula)
+        .filter(DetalleMatricula.id == detalle_id)
+        .first()
+    )
+    assert det is None
+
+
+def test_disassociate_complementary_error_already_paid(session, client):
+    # 1. Seed necessary parametrization
+    grado = Grado(nombre="Primero")
+    acudiente = Acudiente(
+        nombre="Acudiente Test 2", parentesco="Madre", telefono="123", correo="t2@t.com"
+    )
+    session.add(grado)
+    session.add(acudiente)
+    session.commit()
+    session.refresh(grado)
+    session.refresh(acudiente)
+
+    periodo = Periodo(
+        periodo_electivo=datetime.now(), estado=True, fecha=datetime.now()
+    )
+    session.add(periodo)
+    session.commit()
+    session.refresh(periodo)
+
+    param = ParametrizarMatricula(grado_id=grado.id, anio=2026, valor=500000)
+    session.add(param)
+
+    comp = Complementario(
+        tipo_complementario="Almuerzo",
+        anio=2026,
+        valor=200000,
+        estado_complemento="Activo",
+        uso_matricula=True,
+    )
+    session.add(comp)
+    session.commit()
+    session.refresh(comp)
+
+    # 2. Register student and enrollment
+    estudiante = Estudiante(
+        grado_id=grado.id,
+        acudiente_id=acudiente.id,
+        nombre="Estudiante Test 2",
+        documento="987654322",
+        activo=True,
+        fecha_activo=datetime.now(),
+    )
+    session.add(estudiante)
+    session.commit()
+    session.refresh(estudiante)
+
+    resp_enroll = client.post(
+        "/api/v1/enrollment/register",
+        json={"estudiante_id": estudiante.id, "periodo_id": periodo.id, "anio": 2026},
+    )
+    assert resp_enroll.status_code == status.HTTP_201_CREATED
+    enroll_data = resp_enroll.json()
+    matricula_id = enroll_data["matricula_id"]
+    detalle_id = enroll_data["complementarios"][0]["detalle_id"]
+
+    # 3. Pay towards that complementary concept (abono)
+    payment_payload = {
+        "matricula_id": matricula_id,
+        "codigo_talonario": "TAL-TEST-DISASSOC-1",
+        "observacion": "Pago parcial de complemento",
+        "asignaciones": [
+            {
+                "concepto": f"complementario_{comp.id}",
+                "complementario_id": comp.id,
+                "detalle_id": detalle_id,
+                "monto": 50000,
+            }
+        ],
+    }
+    response_pay = client.post(
+        "/api/v1/enrollment/payments/directed", json=payment_payload
+    )
+    assert response_pay.status_code == status.HTTP_201_CREATED
+
+    # 4. Attempt to disassociate and expect error
+    response_del = client.delete(f"/api/v1/enrollment/details/{detalle_id}")
+    assert response_del.status_code == status.HTTP_400_BAD_REQUEST
+    assert "ya tiene abonos registrados" in response_del.json()["detail"]

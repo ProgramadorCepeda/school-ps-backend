@@ -22,6 +22,9 @@ from app.modules.enrollment.application.search_students import SearchStudents
 from app.modules.enrollment.application.manual_enrollment import ManualEnrollment
 from app.modules.enrollment.application.get_payment_history import GetPaymentHistory
 from app.modules.enrollment.application.get_payment_receipt import GetPaymentReceipt
+from app.modules.enrollment.application.disassociate_complementary import (
+    DisassociateComplementary,
+)
 from app.modules.enrollment.schemas.request import (
     DirectedPaymentRequest,
     RegisterEnrollmentRequest,
@@ -477,3 +480,29 @@ async def get_payment_receipt(
         raise HTTPException(status_code=404, detail=str(e)) from e
 
     return PaymentReceiptResponse(**receipt_data)
+
+
+@router.delete(
+    "/details/{detalle_id}",
+    status_code=200,
+    summary="Desvincular un concepto complementario de un estudiante",
+    description=(
+        "Permite eliminar un concepto complementario específico asignado a un estudiante "
+        "siempre y cuando no tenga abonos registrados para ese concepto."
+    ),
+)
+async def disassociate_complementary(
+    session: SessionDep,
+    detalle_id: int,
+):
+    use_case = DisassociateComplementary(session=session)
+    try:
+        matricula_id = use_case.execute(detalle_id=detalle_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    return {
+        "mensaje": "Concepto complementario desvinculado exitosamente",
+        "detalle_id": detalle_id,
+        "matricula_id": matricula_id,
+    }
