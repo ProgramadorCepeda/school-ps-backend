@@ -499,9 +499,9 @@ class SQLEnrollmentRepository(EnrollmentRepository):
         statement = (
             select(Pago)
             .where(Pago.matricula_id == matricula_id)
-            .order_by(Pago.fecha_pago.desc())
+            .order_by(col(Pago.fecha_pago).desc())
         )
-        return self._session.exec(statement).all()
+        return list(self._session.exec(statement).all())
 
     def get_payment_by_id(self, pago_id: int) -> tuple | None:
         statement = select(Pago).where(Pago.id == pago_id)
@@ -524,7 +524,7 @@ class SQLEnrollmentRepository(EnrollmentRepository):
 
     def get_payment_receipt_data(self, pago_id: int) -> dict | None:
         statement = (
-            select(Pago, Matricula, Estudiante, Grado, Acudiente)
+            select(Pago, Matricula, Estudiante, Grado, Acudiente)  # type: ignore[call-overload]
             .join(Matricula, Pago.matricula_id == Matricula.id)
             .join(Estudiante, Matricula.estudiante_id == Estudiante.id)
             .join(Grado, Estudiante.grado_id == Grado.id)
