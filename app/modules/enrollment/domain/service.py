@@ -49,7 +49,8 @@ class EnrollmentService:
         total_paid = 0
 
         if enrollment_exists:
-            assert matricula_id is not None
+            if matricula_id is None:
+                raise ValueError("El id de la matrícula no puede ser nulo cuando existe")
             total_pending = pending_base + sum(
                 item.valor_pendiente for item in complementary_items
             )
@@ -476,3 +477,17 @@ class EnrollmentService:
                 )
             )
         return students
+
+    def search_students_with_balances(
+        self,
+        documento: str | None,
+        nombre: str | None,
+        year: int,
+    ) -> list[EnrollmentBalance]:
+        """Busca estudiantes y obtiene su balance consolidado en la capa de servicio."""
+        students = self.search_students(documento, nombre)
+        balances = []
+        for student in students:
+            balance = self.get_balance(student.id, year)
+            balances.append(balance)
+        return balances

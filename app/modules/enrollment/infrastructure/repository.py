@@ -438,10 +438,12 @@ class SQLEnrollmentRepository(EnrollmentRepository):
             col(Estudiante.grado_id) == col(Grado.id),
         )
         if documento:
+            doc_norm = documento.strip().lower()
             statement = statement.where(
-                col(Estudiante.documento).ilike(f"%{documento}%")
+                col(Estudiante.documento).ilike(f"%{doc_norm}%")
             )
         if nombre:
-            statement = statement.where(col(Estudiante.nombre).ilike(f"%{nombre}%"))
+            nom_norm = nombre.strip().lower()
+            statement = statement.where(col(Estudiante.nombre).ilike(f"%{nom_norm}%"))
 
         return list(self._session.exec(statement).all())
