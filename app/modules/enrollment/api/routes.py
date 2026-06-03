@@ -12,7 +12,6 @@ from app.modules.enrollment.application.create_complementary import (
 from app.modules.enrollment.application.get_enrollment_balance import (
     GetEnrollmentBalance,
 )
-from app.modules.enrollment.application.mass_enrollment import MassEnrollment
 from app.modules.enrollment.application.modify_enrollment import ModifyEnrollment
 from app.modules.enrollment.application.process_payment import ProcessDirectedPayment
 from app.modules.enrollment.application.register_enrollment import (
@@ -307,49 +306,6 @@ async def directed_payment(
         mensaje=mensaje,
     )
 
-
-@router.post(
-    "/register/massive/csv",
-    status_code=201,
-    summary="Registrar matrículas masivamente vía CSV",
-)
-async def register_massive_csv(
-    session: SessionDep,
-    periodo_id: int,
-    anio: int,
-    file: UploadFile = File(...),
-):
-    if not file.filename or not file.filename.lower().endswith(".csv"):
-        raise HTTPException(
-            status_code=400,
-            detail="Archivo inválido. Solo se admiten archivos con extensión .csv",
-        )
-    use_case = MassEnrollment(session=session)
-
-    content = await file.read()
-    return use_case.execute(content, periodo_id, anio)
-
-
-@router.post(
-    "/register/massive/txt",
-    status_code=201,
-    summary="Registrar matrículas masivamente vía TXT",
-)
-async def register_massive_txt(
-    session: SessionDep,
-    periodo_id: int,
-    anio: int,
-    file: UploadFile = File(...),
-):
-    if not file.filename or not file.filename.lower().endswith(".txt"):
-        raise HTTPException(
-            status_code=400,
-            detail="Archivo inválido. Solo se admiten archivos con extensión .txt",
-        )
-    use_case = MassEnrollment(session=session)
-
-    content = await file.read()
-    return use_case.execute(content, periodo_id, anio)
 
 
 @router.post(

@@ -128,45 +128,6 @@ def test_manual_enrollment_invalid_grade(session, client):
     assert "no existe" in response.json()["detail"]
 
 
-def test_mass_enrollment_with_names(session, client):
-    # Seed parameters
-    grado = Grado(nombre="Tercero")
-    session.add(grado)
-    session.commit()
-    session.refresh(grado)
-
-    periodo = Periodo(
-        periodo_electivo=datetime.now(), estado=True, fecha=datetime.now()
-    )
-    session.add(periodo)
-    session.commit()
-    session.refresh(periodo)
-
-    param = ParametrizarMatricula(grado_id=grado.id, anio=2026, valor=600000)
-    session.add(param)
-    session.commit()
-
-    csv_data = (
-        "documento,nombre,grado,acudiente\n10051111,Juan Perez,Tercero,Maria Perez"
-    )
-    files = {"file": ("students.csv", csv_data.encode("utf-8"), "text/csv")}
-    params = {"periodo_id": periodo.id, "anio": 2026}
-    response = client.post(
-        "/api/v1/enrollment/register/massive/csv", files=files, params=params
-    )
-    assert response.status_code == status.HTTP_201_CREATED
-    data = response.json()
-    assert data["success"] == 1
-    assert data["errors"] == 0
-
-    # Verify db
-    student = (
-        session.query(Estudiante).filter(Estudiante.documento == "10051111").first()
-    )
-    assert student is not None
-    assert student.nombre == "Juan Perez"
-
-
 def test_payment_history_and_receipt(session, client):
     # Seed student, acudiente, grado, parametrización
     grado = Grado(nombre="Primero")
