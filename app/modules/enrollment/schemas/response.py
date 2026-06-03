@@ -135,3 +135,38 @@ class PaymentHistoryItemResponse(BaseModel):
     monto_total: int
     observacion: str | None = None
 
+
+class ReceiptStudentResponse(BaseModel):
+    """Info del estudiante dentro del recibo."""
+
+    nombre: str
+    documento: str
+    grado: str
+
+
+class ReceiptGuardianResponse(BaseModel):
+    """Info del acudiente dentro del recibo."""
+
+    nombre: str
+
+
+class ReceiptDistributionResponse(BaseModel):
+    """Detalle de distribución dentro del recibo."""
+
+    concepto: str
+    monto_aplicado: int
+
+
+class PaymentReceiptResponse(BaseModel):
+    """Respuesta completa del comprobante de pago."""
+
+    pago_id: int
+    codigo_talonario: str
+    fecha_pago: str
+    monto_total: int
+    observacion: str | None = None
+    estudiante: ReceiptStudentResponse
+    acudiente: ReceiptGuardianResponse
+    distribuciones: list[ReceiptDistributionResponse]
+
+

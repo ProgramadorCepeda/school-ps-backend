@@ -32,13 +32,25 @@ from app.modules.enrollment.schemas.response import (
     EnrollmentCreatedResponse,
     PaymentDistributionResponse,
     PaymentHistoryItemResponse,
+    PaymentReceiptResponse,
     PaymentResultResponse,
+    ReceiptDistributionResponse,
+    ReceiptGuardianResponse,
+    ReceiptStudentResponse,
     StudentInfoResponse,
     StudentSearchItemResponse,
     StudentSearchListResponse,
     StudentGeneralInfoResponse,
     GradeInfoResponse,
     ComplementaryConceptResponse,
+)
+from app.modules.enrollment.infrastructure.models import (
+    Acudiente,
+    Estudiante,
+    Grado,
+    Matricula,
+    Pago,
+    PagoDetalle,
 )
 from app.modules.enrollment.domain.service import StudentService
 from app.modules.enrollment.infrastructure.repository import SQLEnrollmentRepository
@@ -540,4 +552,74 @@ async def get_student_payments(
         for p in pagos
         if p.id is not None
     ]
+
+
+@router.get(
+    "/payments/{pago_id}/receipt",
+    response_model=PaymentReceiptResponse,
+    summary="Obtener comprobante/recibo de un pago",
+    description=(
+        "Retorna los datos completos del comprobante de pago, incluyendo "
+        "información del estudiante, acudiente y distribución del pago."
+    ),
+)
+async def get_payment_receipt(
+    session: SessionDep,
+    pago_id: int,
+) -> PaymentReceiptResponse:
+    from sqlmodel import select
+
+    # 1. Obtener el pago
+    pago = session.exec(select(Pago).where(Pago.id == pago_id)).first()
+    if pago is None:
+        raise HTTPException(status_code=404, detail="Pago no encontrado")
+
+    # 2. Obtener matrícula → estudiante → grado + acudiente
+    matricula = session.exec(
+        select(Matricula).where(Matricula.id == pago.matricula_id)
+    ).first()
+    if matricula is None:
+        raise HTTPException(status_code=404, detail="Matrícula asociada no encontrada")
+
+    estudiante = session.exec(
+        select(Estudiante).where(Estudiante.id == matricula.estudiante_id)
+    ).first()
+    if estudiante is None:
+        raise HTTPException(status_code=404, detail="Estudiante no encontrado")
+
+    grado = session.exec(
+        select(Grado).where(Grado.id == estudiante.grado_id)
+    ).first()
+
+    acudiente = session.exec(
+        select(Acudiente).where(Acudiente.id == estudiante.acudiente_id)
+    ).first()
+
+    # 3. Obtener distribuciones del pago
+    detalles = session.exec(
+        select(PagoDetalle).where(PagoDetalle.pago_id == pago_id)
+    ).all()
+
+    return PaymentReceiptResponse(
+        pago_id=pago_id,
+        codigo_talonario=pago.codigo_talonario,
+        fecha_pago=pago.fecha_pago.isoformat(),
+        monto_total=pago.monto_total,
+        observacion=pago.observacion,
+        estudiante=ReceiptStudentResponse(
+            nombre=estudiante.nombre,
+            documento=estudiante.documento,
+            grado=grado.nombre if grado else "Sin grado",
+        ),
+        acudiente=ReceiptGuardianResponse(
+            nombre=acudiente.nombre if acudiente else "Sin acudiente",
+        ),
+        distribuciones=[
+            ReceiptDistributionResponse(
+                concepto=d.concepto,
+                monto_aplicado=d.monto_aplicado,
+            )
+            for d in detalles
+        ],
+    )
 
