@@ -2,7 +2,11 @@ import pytest
 from sqlmodel import SQLModel, Session, create_engine
 from sqlalchemy import event
 from sqlalchemy.pool import StaticPool
+from fastapi import status
+from fastapi.testclient import TestClient
 
+from app.main import app
+from app.core.db import get_session
 from app.modules.enrollment.infrastructure.models import (
     Grado,
     Acudiente,
@@ -155,3 +159,92 @@ def test_student_service_all_functionalities(session):
     assert {s.nombre for s in grade_10_students} == {"Juan Andres Cepeda", "Maria Camila Cepeda"}
     # Verifica que son objetos Estudiante (entidades crudas) y tienen sus campos/atributos completos
     assert isinstance(grade_10_students[0], Estudiante)
+
+
+@pytest.fixture(name="client")
+def client_fixture(session):
+    def override_get_session():
+        yield session
+
+    app.dependency_overrides[get_session] = override_get_session
+    yield TestClient(app)
+    app.dependency_overrides.clear()
+
+
+def test_student_endpoints(session, client):
+    # 1. Seed base data: Grados
+    grado_10 = Grado(nombre="Décimo")
+    grado_11 = Grado(nombre="Once")
+    session.add(grado_10)
+    session.add(grado_11)
+    session.commit()
+    session.refresh(grado_10)
+    session.refresh(grado_11)
+
+    # Seed base data: Acudiente
+    acudiente = Acudiente(
+        nombre="Carlos Gomez",
+        parentesco="Padre",
+        telefono="3112223344",
+        correo="carlos@gmail.com",
+    )
+    session.add(acudiente)
+    session.commit()
+    session.refresh(acudiente)
+
+    # Seed base data: Estudiantes
+    est1 = Estudiante(
+        nombre="Juan Andres Cepeda",
+        documento="1005777888",
+        grado_id=grado_10.id,
+        acudiente_id=acudiente.id,
+        activo=True,
+    )
+    est2 = Estudiante(
+        nombre="Maria Camila Cepeda",
+        documento="1005111222",
+        grado_id=grado_10.id,
+        acudiente_id=acudiente.id,
+        activo=True,
+    )
+    est_inactivo = Estudiante(
+        nombre="Luis Perez",
+        documento="1005555666",
+        grado_id=grado_11.id,
+        acudiente_id=acudiente.id,
+        activo=False,  # Inactive
+    )
+    session.add(est1)
+    session.add(est2)
+    session.add(est_inactivo)
+    session.commit()
+    session.refresh(est1)
+    session.refresh(est2)
+    session.refresh(est_inactivo)
+
+    # Endpoint 1: GET /api/v1/enrollment/students/active (Search active students)
+    resp = client.get("/api/v1/enrollment/students/active", params={"query": "Cepeda"})
+    assert resp.status_code == status.HTTP_200_OK
+    data = resp.json()
+    assert len(data) == 2
+    assert {s["nombre"] for s in data} == {"Juan Andres Cepeda", "Maria Camila Cepeda"}
+    assert "grado_nombre" in data[0]
+
+    # Filter by grade
+    resp_grade = client.get("/api/v1/enrollment/students/active", params={"grado_id": grado_11.id})
+    assert resp_grade.status_code == status.HTTP_200_OK
+    assert len(resp_grade.json()) == 0  # Since est_inactivo is False (inactive)
+
+    # Endpoint 2: POST /api/v1/enrollment/students/bulk (Retrieve student basic info in bulk)
+    resp_bulk = client.post("/api/v1/enrollment/students/bulk", json=[est1.id, est_inactivo.id])
+    assert resp_bulk.status_code == status.HTTP_200_OK
+    data_bulk = resp_bulk.json()
+    assert len(data_bulk) == 2
+    assert {s["nombre"] for s in data_bulk} == {"Juan Andres Cepeda", "Luis Perez"}
+
+    # Endpoint 3: GET /api/v1/enrollment/grades (List all grades)
+    resp_grades = client.get("/api/v1/enrollment/grades")
+    assert resp_grades.status_code == status.HTTP_200_OK
+    data_grades = resp_grades.json()
+    assert len(data_grades) == 2
+    assert {g["nombre"] for g in data_grades} == {"Décimo", "Once"}

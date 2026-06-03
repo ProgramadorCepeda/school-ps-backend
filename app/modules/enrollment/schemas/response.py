@@ -97,3 +97,19 @@ class StudentSearchListResponse(BaseModel):
 
     estudiantes: list[StudentSearchItemResponse]
     total_resultados: int
+
+
+class StudentGeneralInfoResponse(BaseModel):
+    """Información básica y resumida del estudiante para búsquedas y consultas lote."""
+
+    id: int
+    nombre: str
+    documento: str
+    grado_nombre: str
+
+
+class GradeInfoResponse(BaseModel):
+    """Información básica de un grado académico."""
+
+    id: int
+    nombre: str

@@ -35,7 +35,11 @@ from app.modules.enrollment.schemas.response import (
     StudentInfoResponse,
     StudentSearchItemResponse,
     StudentSearchListResponse,
+    StudentGeneralInfoResponse,
+    GradeInfoResponse,
 )
+from app.modules.enrollment.domain.service import StudentService
+from app.modules.enrollment.infrastructure.repository import SQLEnrollmentRepository
 
 router = APIRouter(
     responses={
@@ -390,3 +394,72 @@ async def assign_complementary(
         "mensaje": "Complementario asignado exitosamente a la matrícula",
         "detalle_id": detalle_id,
     }
+
+
+@router.get(
+    "/students/active",
+    response_model=list[StudentGeneralInfoResponse],
+    summary="Buscar estudiantes activos",
+    description="Retorna una lista paginada de estudiantes activos filtrados opcionalmente por nombre/documento o grado.",
+)
+async def search_active_students(
+    session: SessionDep,
+    query: str | None = Query(default=None, description="Búsqueda por nombre o documento"),
+    grado_id: int | None = Query(default=None, description="Filtrar por grado académico"),
+    limit: int = Query(default=10, description="Límite de paginación"),
+    offset: int = Query(default=0, description="Offset de paginación"),
+) -> list[StudentGeneralInfoResponse]:
+    service = StudentService(SQLEnrollmentRepository(session))
+    results = service.search_active_students(query=query, grado_id=grado_id, limit=limit, offset=offset)
+    return [
+        StudentGeneralInfoResponse(
+            id=s.id,
+            nombre=s.nombre,
+            documento=s.documento,
+            grado_nombre=s.grado_nombre,
+        )
+        for s in results
+    ]
+
+
+@router.post(
+    "/students/bulk",
+    response_model=list[StudentGeneralInfoResponse],
+    summary="Obtener información de estudiantes por lote",
+    description="Recibe una lista de IDs de estudiantes y retorna su información básica.",
+)
+async def get_students_bulk(
+    session: SessionDep,
+    student_ids: list[int],
+) -> list[StudentGeneralInfoResponse]:
+    service = StudentService(SQLEnrollmentRepository(session))
+    results = service.get_students_bulk(student_ids)
+    return [
+        StudentGeneralInfoResponse(
+            id=s.id,
+            nombre=s.nombre,
+            documento=s.documento,
+            grado_nombre=s.grado_nombre,
+        )
+        for s in results
+    ]
+
+
+@router.get(
+    "/grades",
+    response_model=list[GradeInfoResponse],
+    summary="Obtener listado de grados disponibles",
+    description="Retorna la lista de todos los grados académicos registrados.",
+)
+async def get_all_grades(
+    session: SessionDep,
+) -> list[GradeInfoResponse]:
+    service = StudentService(SQLEnrollmentRepository(session))
+    results = service.get_all_grades()
+    return [
+        GradeInfoResponse(
+            id=g.id,
+            nombre=g.nombre,
+        )
+        for g in results
+    ]
