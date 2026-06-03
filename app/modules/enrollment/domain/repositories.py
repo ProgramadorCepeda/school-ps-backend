@@ -228,14 +228,18 @@ class EnrollmentRepository(ABC):
         ...
 
     @abstractmethod
+    @abstractmethod
     def get_total_paid(self, matricula_id: int) -> int:
         """Retorna la suma total de pagos registrados para una matrícula."""
         ...
 
     @abstractmethod
-    def search_students(
-        self, documento: str | None, nombre: str | None
-    ) -> list[StudentInfo]:
+    def get_payments(self, matricula_id: int) -> list:
+        """Retorna la lista de pagos registrados para una matrícula."""
+        ...
+
+    @abstractmethod
+    def search_students(self, documento: str | None, nombre: str | None) -> list[tuple]:
         """Busca estudiantes por coincidencia parcial en documento o nombre."""
         ...
 
@@ -265,7 +269,7 @@ class EnrollmentRepository(ABC):
 
     @abstractmethod
     def get_payment_by_id(self, pago_id: int) -> tuple | None:
-        """Retorna un pago por su ID como tupla (id, matricula_id, codigo_talonario, monto_total, fecha_pago, observacion)."""
+        """Retorna un pago por su ID como tupla."""
         ...
 
     @abstractmethod
@@ -280,7 +284,7 @@ class EnrollmentRepository(ABC):
 
     @abstractmethod
     def get_detalle_matricula(self, detalle_id: int) -> tuple | None:
-        """Obtiene un detalle de matrícula por su ID como tupla (id, matricula_id, valor_completo, descuento, valor_pendiente)."""
+        """Obtiene un detalle de matrícula por su ID."""
         ...
 
     @abstractmethod

@@ -4,6 +4,7 @@ from app.modules.enrollment.domain.entities import (
     EnrollmentCreated,
     PaymentAllocation,
     PaymentResult,
+    StudentInfo,
 )
 from app.modules.enrollment.domain.repositories import EnrollmentRepository
 
@@ -48,12 +49,14 @@ class EnrollmentService:
         total_paid = 0
 
         if enrollment_exists:
-            assert matricula_id is not None
+            if matricula_id is None:
+                raise ValueError("El id de la matrícula no puede ser nulo cuando existe")
             total_pending = pending_base + sum(
                 item.valor_pendiente for item in complementary_items
             )
             payments_count = self.repo.get_payments_count(matricula_id)
-            total_paid = self.repo.get_total_paid(matricula_id)
+            payments = self.repo.get_payments(matricula_id)
+            total_paid = sum(p.monto_total for p in payments)
             total_cost = total_pending + total_paid
         else:
             # Sin matrícula: usar costo parametrizado
@@ -565,3 +568,38 @@ class EnrollmentService:
             year=year,
         )
         return result.matricula_id
+
+    def search_students(
+        self, documento: str | None, nombre: str | None
+    ) -> list[StudentInfo]:
+        """Busca estudiantes y mapea los resultados crudos a entidades StudentInfo."""
+        raw_results = self.repo.search_students(documento, nombre)
+        students = []
+        for est, gra in raw_results:
+            if est.id is None or est.grado_id is None:
+                continue
+            students.append(
+                StudentInfo(
+                    id=est.id,
+                    nombre=est.nombre,
+                    documento=est.documento,
+                    grado_id=est.grado_id,
+                    grado_nombre=gra.nombre,
+                    activo=est.activo,
+                )
+            )
+        return students
+
+    def search_students_with_balances(
+        self,
+        documento: str | None,
+        nombre: str | None,
+        year: int,
+    ) -> list[EnrollmentBalance]:
+        """Busca estudiantes y obtiene su balance consolidado en la capa de servicio."""
+        students = self.search_students(documento, nombre)
+        balances = []
+        for student in students:
+            balance = self.get_balance(student.id, year)
+            balances.append(balance)
+        return balances

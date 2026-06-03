@@ -441,33 +441,27 @@ class SQLEnrollmentRepository(EnrollmentRepository):
         results = self._session.exec(statement).all()
         return sum(p.monto_total for p in results)
 
+    def get_payments(self, matricula_id: int) -> list[Pago]:
+        statement = select(Pago).where(Pago.matricula_id == matricula_id)
+        return list(self._session.exec(statement).all())
+
     def search_students(
         self, documento: str | None, nombre: str | None
-    ) -> list[StudentInfo]:
+    ) -> list[tuple[Estudiante, Grado]]:
         statement = select(Estudiante, Grado).join(
             Grado,
-            Estudiante.grado_id == Grado.id,  # type: ignore[arg-type]
+            col(Estudiante.grado_id) == col(Grado.id),
         )
         if documento:
+            doc_norm = documento.strip().lower()
             statement = statement.where(
-                col(Estudiante.documento).ilike(f"%{documento}%")
+                col(Estudiante.documento).ilike(f"%{doc_norm}%")
             )
         if nombre:
-            statement = statement.where(col(Estudiante.nombre).ilike(f"%{nombre}%"))
+            nom_norm = nombre.strip().lower()
+            statement = statement.where(col(Estudiante.nombre).ilike(f"%{nom_norm}%"))
 
-        results = self._session.exec(statement).all()
-        return [
-            StudentInfo(
-                id=est.id,
-                nombre=est.nombre,
-                documento=est.documento,
-                grado_id=est.grado_id,
-                grado_nombre=gra.nombre,
-                activo=est.activo,
-            )
-            for est, gra in results
-            if est.id is not None and est.grado_id is not None
-        ]
+        return list(self._session.exec(statement).all())
 
     # === Nuevas Consultas y Acciones ===
 

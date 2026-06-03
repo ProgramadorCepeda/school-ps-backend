@@ -98,8 +98,6 @@ class StudentSearchListResponse(BaseModel):
 
     estudiantes: list[StudentSearchItemResponse]
     total_resultados: int
-
-
 class PaymentHistoryItemResponse(BaseModel):
     """DTO para un ítem del historial de pagos (auditoría)."""
 

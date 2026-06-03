@@ -40,7 +40,11 @@ async def login(
             detail=error_msg,
         ) from e
 
-    assert user.id is not None
+    if user.id is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error al procesar el usuario: ID no asignado",
+        )
     return LoginResponse(
         mensaje="Inicio de sesión exitoso",
         usuario=UserResponse(

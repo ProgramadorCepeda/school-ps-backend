@@ -19,9 +19,4 @@ class SearchStudents:
         nombre: str | None,
         year: int,
     ) -> list[EnrollmentBalance]:
-        students = self.service.repo.search_students(documento, nombre)
-        balances = []
-        for student in students:
-            balance = self.service.get_balance(student.id, year)
-            balances.append(balance)
-        return balances
+        return self.service.search_students_with_balances(documento, nombre, year)
