@@ -291,7 +291,7 @@ class SQLEnrollmentRepository(EnrollmentRepository):
         mat = self._session.exec(statement).one()
         mat.estado_matricula = status
         self._session.add(mat)
-        self._session.flush()
+        self._session.commit()
 
     def enrollment_has_payments(self, matricula_id: int) -> bool:
         """Retorna True si existe al menos un pago registrado para esta matrícula."""
