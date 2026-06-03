@@ -6,7 +6,7 @@ from app.modules.enrollment.domain.entities import (
     StudentGeneralInfo,
     GradeInfo,
 )
-from app.modules.enrollment.infrastructure.models import Estudiante
+from app.modules.enrollment.infrastructure.models import Estudiante, Complementario
 
 
 class EnrollmentRepository(ABC):
@@ -261,4 +261,9 @@ class EnrollmentRepository(ABC):
     @abstractmethod
     def get_student_entities_by_grade(self, grado_id: int) -> list[Estudiante]:
         """Obtiene la lista de entidades Estudiante crudas por grado ID."""
+        ...
+
+    @abstractmethod
+    def get_all_complementaries_by_year(self, year: int) -> list[Complementario]:
+        """Obtiene todos los conceptos complementarios activos por año."""
         ...

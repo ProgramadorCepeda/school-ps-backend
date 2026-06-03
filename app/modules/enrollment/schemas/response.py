@@ -113,3 +113,14 @@ class GradeInfoResponse(BaseModel):
 
     id: int
     nombre: str
+
+
+class ComplementaryConceptResponse(BaseModel):
+    """Esquema de respuesta para un concepto complementario."""
+
+    id: int
+    tipo_complementario: str
+    anio: int
+    valor: int
+    estado_complemento: str
+    uso_matricula: bool

@@ -11,6 +11,7 @@ from app.modules.enrollment.infrastructure.models import (
     Grado,
     Acudiente,
     Estudiante,
+    Complementario,
 )
 from app.modules.enrollment.infrastructure.repository import SQLEnrollmentRepository
 from app.modules.enrollment.domain.service import StudentService
@@ -248,3 +249,47 @@ def test_student_endpoints(session, client):
     data_grades = resp_grades.json()
     assert len(data_grades) == 2
     assert {g["nombre"] for g in data_grades} == {"Décimo", "Once"}
+
+
+def test_get_complementary_concepts_endpoint(session, client):
+    # Seed complementary concepts
+    c1 = Complementario(
+        tipo_complementario="Seguro Estudiantil",
+        anio=2026,
+        valor=50000,
+        estado_complemento="Activo",
+        uso_matricula=True,
+    )
+    c2 = Complementario(
+        tipo_complementario="Sistematización",
+        anio=2026,
+        valor=30000,
+        estado_complemento="Activo",
+        uso_matricula=False,
+    )
+    c3 = Complementario(
+        tipo_complementario="Pensión Especial",
+        anio=2026,
+        valor=100000,
+        estado_complemento="Inactivo",  # Inactive
+        uso_matricula=True,
+    )
+    c4 = Complementario(
+        tipo_complementario="Derechos de Grado",
+        anio=2025,  # Different year
+        valor=80000,
+        estado_complemento="Activo",
+        uso_matricula=True,
+    )
+    session.add_all([c1, c2, c3, c4])
+    session.commit()
+
+    # Call the endpoint
+    resp = client.get("/api/v1/enrollment/complementary", params={"year": 2026})
+    assert resp.status_code == status.HTTP_200_OK
+    data = resp.json()
+    
+    # Check that we only get Active concepts for the year 2026
+    assert len(data) == 2
+    assert {c["tipo_complementario"] for c in data} == {"Seguro Estudiantil", "Sistematización"}
+    assert {c["valor"] for c in data} == {50000, 30000}

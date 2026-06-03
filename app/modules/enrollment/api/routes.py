@@ -37,6 +37,7 @@ from app.modules.enrollment.schemas.response import (
     StudentSearchListResponse,
     StudentGeneralInfoResponse,
     GradeInfoResponse,
+    ComplementaryConceptResponse,
 )
 from app.modules.enrollment.domain.service import StudentService
 from app.modules.enrollment.infrastructure.repository import SQLEnrollmentRepository
@@ -462,4 +463,34 @@ async def get_all_grades(
             nombre=g.nombre,
         )
         for g in results
+    ]
+
+
+@router.get(
+    "/complementary",
+    response_model=list[ComplementaryConceptResponse],
+    summary="Obtener todos los conceptos complementarios activos por año",
+)
+async def get_complementaries(
+    session: SessionDep,
+    year: int | None = Query(
+        default=None,
+        description="Año a consultar. Si no se envía, se usa el año actual.",
+    ),
+) -> list[ComplementaryConceptResponse]:
+    if year is None:
+        year = datetime.now().year
+    repo = SQLEnrollmentRepository(session)
+    results = repo.get_all_complementaries_by_year(year)
+    return [
+        ComplementaryConceptResponse(
+            id=c.id,  # type: ignore
+            tipo_complementario=c.tipo_complementario,
+            anio=c.anio,
+            valor=c.valor,
+            estado_complemento=c.estado_complemento,
+            uso_matricula=c.uso_matricula,
+        )
+        for c in results
+        if c.id is not None
     ]

@@ -516,3 +516,10 @@ class SQLEnrollmentRepository(EnrollmentRepository):
     def get_student_entities_by_grade(self, grado_id: int) -> list[Estudiante]:
         statement = select(Estudiante).where(col(Estudiante.grado_id) == grado_id)
         return list(self._session.exec(statement).all())
+
+    def get_all_complementaries_by_year(self, year: int) -> list[Complementario]:
+        statement = select(Complementario).where(
+            col(Complementario.anio) == year,
+            col(Complementario.estado_complemento) == "Activo",
+        )
+        return list(self._session.exec(statement).all())
