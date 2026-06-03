@@ -5,8 +5,11 @@ from app.modules.enrollment.domain.entities import (
     PaymentAllocation,
     PaymentResult,
     StudentInfo,
+    StudentGeneralInfo,
+    GradeInfo,
 )
 from app.modules.enrollment.domain.repositories import EnrollmentRepository
+from app.modules.enrollment.infrastructure.models import Estudiante
 
 from app.modules.enrollment.schemas.request import ModifyEnrollmentRequest
 
@@ -491,3 +494,36 @@ class EnrollmentService:
             balance = self.get_balance(student.id, year)
             balances.append(balance)
         return balances
+
+
+class StudentService:
+    """Servicio de dominio para consultas generales de estudiantes y grados."""
+
+    def __init__(self, repository: EnrollmentRepository) -> None:
+        self.repo = repository
+
+    def search_active_students(
+        self, query: str | None = None, grado_id: int | None = None, limit: int = 10, offset: int = 0
+    ) -> list[StudentGeneralInfo]:
+        """Servicio 1: Búsqueda general de estudiantes activos."""
+        return self.repo.search_active_students(
+            query=query, grado_id=grado_id, limit=limit, offset=offset
+        )
+
+    def get_students_bulk(self, student_ids: list[int]) -> list[StudentGeneralInfo]:
+        """Servicio 2: Información de estudiantes por lote (Bulk)."""
+        if not student_ids:
+            return []
+        return self.repo.get_students_bulk(student_ids)
+
+    def get_all_grades(self) -> list[GradeInfo]:
+        """Servicio 3: Listado de grados disponibles en el sistema."""
+        return self.repo.get_all_grades()
+
+    def get_student_by_id(self, student_id: int) -> Estudiante | None:
+        """Servicio 4: Obtiene el objeto/entidad Estudiante crudo por ID."""
+        return self.repo.get_student_entity_by_id(student_id)
+
+    def get_students_by_grade(self, grado_id: int) -> list[Estudiante]:
+        """Servicio 5: Obtiene la lista de entidades Estudiante crudas en un grado."""
+        return self.repo.get_student_entities_by_grade(grado_id)

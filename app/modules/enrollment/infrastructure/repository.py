@@ -1,10 +1,12 @@
 from datetime import datetime
 
-from sqlmodel import col, Session, select
+from sqlmodel import col, Session, select, or_, func
 
 from app.modules.enrollment.domain.entities import (
     ComplementaryDetail,
     StudentInfo,
+    StudentGeneralInfo,
+    GradeInfo,
 )
 from app.modules.enrollment.domain.repositories import EnrollmentRepository
 from app.modules.enrollment.infrastructure.models import (
@@ -446,4 +448,71 @@ class SQLEnrollmentRepository(EnrollmentRepository):
             nom_norm = nombre.strip().lower()
             statement = statement.where(col(Estudiante.nombre).ilike(f"%{nom_norm}%"))
 
+        return list(self._session.exec(statement).all())
+
+    def search_active_students(
+        self, query: str | None, grado_id: int | None, limit: int, offset: int
+    ) -> list[StudentGeneralInfo]:
+        statement = select(Estudiante, Grado).join(
+            Grado,
+            col(Estudiante.grado_id) == col(Grado.id),
+        ).where(col(Estudiante.activo) == True)
+
+        if query:
+            q_norm = f"%{query.strip().lower()}%"
+            statement = statement.where(
+                or_(
+                    func.lower(Estudiante.nombre).like(q_norm),
+                    func.lower(Estudiante.documento).like(q_norm)
+                )
+            )
+        if grado_id is not None:
+            statement = statement.where(col(Estudiante.grado_id) == grado_id)
+
+        statement = statement.offset(offset).limit(limit)
+        results = self._session.exec(statement).all()
+        return [
+            StudentGeneralInfo(
+                id=est.id,  # type: ignore
+                nombre=est.nombre,
+                documento=est.documento,
+                grado_nombre=gr.nombre,
+            )
+            for est, gr in results
+            if est.id is not None
+        ]
+
+    def get_students_bulk(self, student_ids: list[int]) -> list[StudentGeneralInfo]:
+        statement = (
+            select(Estudiante, Grado)
+            .join(Grado, col(Estudiante.grado_id) == col(Grado.id))
+            .where(col(Estudiante.id).in_(student_ids))
+        )
+        results = self._session.exec(statement).all()
+        return [
+            StudentGeneralInfo(
+                id=est.id,  # type: ignore
+                nombre=est.nombre,
+                documento=est.documento,
+                grado_nombre=gr.nombre,
+            )
+            for est, gr in results
+            if est.id is not None
+        ]
+
+    def get_all_grades(self) -> list[GradeInfo]:
+        statement = select(Grado).order_by(col(Grado.nombre))
+        results = self._session.exec(statement).all()
+        return [
+            GradeInfo(id=gr.id, nombre=gr.nombre)  # type: ignore
+            for gr in results
+            if gr.id is not None
+        ]
+
+    def get_student_entity_by_id(self, student_id: int) -> Estudiante | None:
+        statement = select(Estudiante).where(col(Estudiante.id) == student_id)
+        return self._session.exec(statement).first()
+
+    def get_student_entities_by_grade(self, grado_id: int) -> list[Estudiante]:
+        statement = select(Estudiante).where(col(Estudiante.grado_id) == grado_id)
         return list(self._session.exec(statement).all())

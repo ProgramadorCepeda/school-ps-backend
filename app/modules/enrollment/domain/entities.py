@@ -79,3 +79,21 @@ class EnrollmentCreated:
     costo_base: int
     total_complementarios: int
     complementarios: list[ComplementaryDetail]
+
+
+@dataclass
+class StudentGeneralInfo:
+    """Información general y resumida de un estudiante."""
+
+    id: int
+    nombre: str
+    documento: str
+    grado_nombre: str
+
+
+@dataclass
+class GradeInfo:
+    """Información general de un grado."""
+
+    id: int
+    nombre: str

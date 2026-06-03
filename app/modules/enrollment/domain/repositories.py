@@ -3,7 +3,10 @@ from abc import ABC, abstractmethod
 from app.modules.enrollment.domain.entities import (
     ComplementaryDetail,
     StudentInfo,
+    StudentGeneralInfo,
+    GradeInfo,
 )
+from app.modules.enrollment.infrastructure.models import Estudiante
 
 
 class EnrollmentRepository(ABC):
@@ -231,4 +234,31 @@ class EnrollmentRepository(ABC):
     @abstractmethod
     def search_students(self, documento: str | None, nombre: str | None) -> list[tuple]:
         """Busca estudiantes por coincidencia parcial en documento o nombre."""
+        ...
+
+    @abstractmethod
+    def search_active_students(
+        self, query: str | None, grado_id: int | None, limit: int, offset: int
+    ) -> list[StudentGeneralInfo]:
+        """Busca estudiantes activos con filtros opcionales de query y grado, con paginación."""
+        ...
+
+    @abstractmethod
+    def get_students_bulk(self, student_ids: list[int]) -> list[StudentGeneralInfo]:
+        """Obtiene información resumida de un lote de IDs de estudiantes."""
+        ...
+
+    @abstractmethod
+    def get_all_grades(self) -> list[GradeInfo]:
+        """Obtiene la lista de todos los grados académicos."""
+        ...
+
+    @abstractmethod
+    def get_student_entity_by_id(self, student_id: int) -> Estudiante | None:
+        """Obtiene el objeto/entidad Estudiante crudo por su ID."""
+        ...
+
+    @abstractmethod
+    def get_student_entities_by_grade(self, grado_id: int) -> list[Estudiante]:
+        """Obtiene la lista de entidades Estudiante crudas por grado ID."""
         ...
