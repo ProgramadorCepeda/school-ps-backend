@@ -456,7 +456,7 @@ class SQLEnrollmentRepository(EnrollmentRepository):
         statement = select(Estudiante, Grado).join(
             Grado,
             col(Estudiante.grado_id) == col(Grado.id),
-        ).where(col(Estudiante.activo) == True)
+        ).where(col(Estudiante.activo))
 
         if query:
             q_norm = f"%{query.strip().lower()}%"
