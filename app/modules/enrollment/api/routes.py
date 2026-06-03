@@ -31,6 +31,7 @@ from app.modules.enrollment.schemas.response import (
     EnrollmentBalanceResponse,
     EnrollmentCreatedResponse,
     PaymentDistributionResponse,
+    PaymentHistoryItemResponse,
     PaymentResultResponse,
     StudentInfoResponse,
     StudentSearchItemResponse,
@@ -494,3 +495,49 @@ async def get_complementaries(
         for c in results
         if c.id is not None
     ]
+
+
+@router.get(
+    "/students/{student_id}/payments",
+    response_model=list[PaymentHistoryItemResponse],
+    summary="Obtener historial de pagos de un estudiante",
+    description=(
+        "Retorna la lista de pagos realizados por un estudiante "
+        "para un año determinado. Si no se envía año, se usa el actual."
+    ),
+)
+async def get_student_payments(
+    session: SessionDep,
+    student_id: int,
+    year: int | None = Query(
+        default=None,
+        description="Año a consultar. Si no se envía, se usa el año actual.",
+    ),
+) -> list[PaymentHistoryItemResponse]:
+    if year is None:
+        year = datetime.now().year
+
+    repo = SQLEnrollmentRepository(session)
+
+    # Obtener la matrícula del estudiante para el año dado
+    mat_id, _estado, _comps, _pend, _total = repo.get_enrollment_details(
+        student_id, year
+    )
+
+    if mat_id is None:
+        return []
+
+    pagos = repo.get_payments(mat_id)
+
+    return [
+        PaymentHistoryItemResponse(
+            id=p.id,  # type: ignore
+            fecha_pago=p.fecha_pago.isoformat(),
+            codigo_talonario=p.codigo_talonario,
+            monto_total=p.monto_total,
+            observacion=p.observacion,
+        )
+        for p in pagos
+        if p.id is not None
+    ]
+

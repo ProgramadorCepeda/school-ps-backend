@@ -124,3 +124,14 @@ class ComplementaryConceptResponse(BaseModel):
     valor: int
     estado_complemento: str
     uso_matricula: bool
+
+
+class PaymentHistoryItemResponse(BaseModel):
+    """Esquema de respuesta para un pago en el historial de pagos."""
+
+    id: int
+    fecha_pago: str
+    codigo_talonario: str
+    monto_total: int
+    observacion: str | None = None
+
