@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.modules.auth.api.routes import router as auth
+from app.modules.classroom.api.routes import router as classroom
 from app.modules.enrollment.api.routes import router as enrollment
 from app.modules.health.api.routes import router as health
 from app.modules.inventory.api.routes import router as inventory
@@ -8,7 +9,6 @@ from app.modules.musical_band.api.routes import router as musical_band
 from app.modules.principal.api.routes import router as principal
 from app.modules.tests.api.routes import router as tests
 from app.modules.tuition.api.routes import router as tuition
-from app.modules.classroom.api.routes import router as classroom
 from app.modules.cafeteria.api.routes import router as cafeteria
 from app.modules.chess.api.routes import router as chess
 from app.modules.sports.api.routes import router as sports
