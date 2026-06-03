@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, Query, UploadFile, File
+from fastapi import APIRouter, HTTPException, Query
 
 from app.core.db import SessionDep
 from app.modules.enrollment.application.assign_complementary import (
