@@ -518,13 +518,15 @@ class SQLEnrollmentRepository(EnrollmentRepository):
             PagoDetalle.monto_aplicado,
         ).where(PagoDetalle.pago_id == pago_id)
         details = self._session.exec(statement).all()
-        return [(concepto, comp_id, monto) for concepto, comp_id, monto in details]
+        return [
+            (str(concepto), comp_id, int(monto)) for concepto, comp_id, monto in details
+        ]
 
     def get_payment_receipt_data(
         self, pago_id: int
     ) -> tuple[Pago, Matricula, Estudiante, Grado, Acudiente] | None:
         statement = (
-            select(Pago, Matricula, Estudiante, Grado, Acudiente)
+            select(Pago, Matricula, Estudiante, Grado, Acudiente)  # type: ignore[call-overload]
             .join(Matricula, Pago.matricula_id == Matricula.id)
             .join(Estudiante, Matricula.estudiante_id == Estudiante.id)
             .join(Grado, Estudiante.grado_id == Grado.id)

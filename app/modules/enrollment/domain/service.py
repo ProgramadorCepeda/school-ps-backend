@@ -625,7 +625,7 @@ class EnrollmentService:
         return [
             PaymentHistoryItem(
                 id=p.id,  # type: ignore[arg-type]
-                fecha_pago=p.fecha_pago.isoformat(),
+                fecha_pago=p.fecha_pago,
                 codigo_talonario=p.codigo_talonario,
                 monto_total=p.monto_total,
                 observacion=p.observacion,
@@ -654,7 +654,7 @@ class EnrollmentService:
         return PaymentReceipt(
             pago_id=pago_id,
             codigo_talonario=pago.codigo_talonario,
-            fecha_pago=pago.fecha_pago.isoformat(),
+            fecha_pago=pago.fecha_pago,
             monto_total=pago.monto_total,
             observacion=pago.observacion,
             estudiante_id=estudiante.id,

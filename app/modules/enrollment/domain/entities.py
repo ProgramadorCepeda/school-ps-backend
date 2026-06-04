@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from datetime import datetime
 
 
 @dataclass
@@ -86,7 +87,7 @@ class PaymentHistoryItem:
     """Un pago dentro del historial de pagos de un estudiante."""
 
     id: int
-    fecha_pago: str
+    fecha_pago: datetime
     codigo_talonario: str
     monto_total: int
     observacion: str | None
@@ -106,7 +107,7 @@ class PaymentReceipt:
 
     pago_id: int
     codigo_talonario: str
-    fecha_pago: str
+    fecha_pago: datetime
     monto_total: int
     observacion: str | None
     estudiante_id: int

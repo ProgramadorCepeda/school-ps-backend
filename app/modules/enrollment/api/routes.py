@@ -43,6 +43,8 @@ from app.modules.enrollment.schemas.response import (
     StudentSearchListResponse,
     PaymentHistoryItemResponse,
     PaymentReceiptResponse,
+    StudentReceiptInfo,
+    AcudienteReceiptInfo,
 )
 
 router = APIRouter(
@@ -440,20 +442,20 @@ async def get_payment_receipt(
         monto_total=receipt_data.monto_total,
         fecha_pago=receipt_data.fecha_pago,
         observacion=receipt_data.observacion,
-        estudiante={
-            "id": receipt_data.estudiante_id,
-            "nombre": receipt_data.nombre_estudiante,
-            "documento": receipt_data.documento_estudiante,
-            "grado": receipt_data.grado_estudiante,
-        },
-        acudiente={
-            "nombre": receipt_data.nombre_acudiente,
-        },
+        estudiante=StudentReceiptInfo(
+            id=receipt_data.estudiante_id,
+            nombre=receipt_data.nombre_estudiante,
+            documento=receipt_data.documento_estudiante,
+            grado=receipt_data.grado_estudiante,
+        ),
+        acudiente=AcudienteReceiptInfo(
+            nombre=receipt_data.nombre_acudiente,
+        ),
         distribuciones=[
-            {
-                "concepto": d.concepto,
-                "monto_aplicado": d.monto_aplicado,
-            }
+            PaymentDistributionResponse(
+                concepto=d.concepto,
+                monto_aplicado=d.monto_aplicado,
+            )
             for d in receipt_data.distribuciones
         ],
     )
