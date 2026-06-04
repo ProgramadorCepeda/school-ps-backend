@@ -624,7 +624,7 @@ class EnrollmentService:
         pagos = self.repo.get_payments_by_matricula(matricula_id)
         return [
             PaymentHistoryItem(
-                id=p.id,  # type: ignore[arg-type]
+                id=p.id,
                 fecha_pago=p.fecha_pago,
                 codigo_talonario=p.codigo_talonario,
                 monto_total=p.monto_total,
