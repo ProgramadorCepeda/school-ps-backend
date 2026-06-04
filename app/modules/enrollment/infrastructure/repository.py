@@ -519,7 +519,12 @@ class SQLEnrollmentRepository(EnrollmentRepository):
         ).where(PagoDetalle.pago_id == pago_id)
         details = self._session.exec(statement).all()
         return [
-            (str(concepto), comp_id, int(monto)) for concepto, comp_id, monto in details
+            (
+                str(concepto),
+                int(comp_id) if comp_id is not None else None,
+                int(monto),
+            )
+            for concepto, comp_id, monto in details
         ]
 
     def get_payment_receipt_data(
