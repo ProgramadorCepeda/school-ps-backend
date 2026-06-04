@@ -512,59 +512,26 @@ class SQLEnrollmentRepository(EnrollmentRepository):
         return None
 
     def get_payment_details(self, pago_id: int) -> list[tuple[str, int | None, int]]:
-        statement = select(PagoDetalle).where(PagoDetalle.pago_id == pago_id)
+        statement = select(
+            PagoDetalle.concepto,
+            PagoDetalle.complementario_id,
+            PagoDetalle.monto_aplicado,
+        ).where(PagoDetalle.pago_id == pago_id)
         details = self._session.exec(statement).all()
-        return [(d.concepto, d.complementario_id, d.monto_aplicado) for d in details]
+        return [(concepto, comp_id, monto) for concepto, comp_id, monto in details]
 
-    def get_payment_receipt_data(self, pago_id: int) -> dict | None:
+    def get_payment_receipt_data(
+        self, pago_id: int
+    ) -> tuple[Pago, Matricula, Estudiante, Grado, Acudiente] | None:
         statement = (
-            select(Pago, Matricula, Estudiante, Grado, Acudiente)  # type: ignore[call-overload]
+            select(Pago, Matricula, Estudiante, Grado, Acudiente)
             .join(Matricula, Pago.matricula_id == Matricula.id)
             .join(Estudiante, Matricula.estudiante_id == Estudiante.id)
             .join(Grado, Estudiante.grado_id == Grado.id)
             .join(Acudiente, Estudiante.acudiente_id == Acudiente.id)
             .where(Pago.id == pago_id)
         )
-        result = self._session.exec(statement).first()
-        if not result:
-            return None
-        pago, matricula, estudiante, grado, acudiente = result
-
-        det_statement = select(PagoDetalle).where(PagoDetalle.pago_id == pago_id)
-        details = self._session.exec(det_statement).all()
-
-        distribuciones = []
-        for d in details:
-            concepto_name = d.concepto
-            if d.complementario_id is not None:
-                comp = self._session.get(Complementario, d.complementario_id)
-                if comp:
-                    concepto_name = comp.tipo_complementario
-            distribuciones.append(
-                {
-                    "concepto": concepto_name,
-                    "complementario_id": d.complementario_id,
-                    "monto_aplicado": d.monto_aplicado,
-                }
-            )
-
-        return {
-            "pago_id": pago.id,
-            "codigo_talonario": pago.codigo_talonario,
-            "monto_total": pago.monto_total,
-            "fecha_pago": pago.fecha_pago,
-            "observacion": pago.observacion,
-            "estudiante": {
-                "id": estudiante.id,
-                "nombre": estudiante.nombre,
-                "documento": estudiante.documento,
-                "grado": grado.nombre,
-            },
-            "acudiente": {
-                "nombre": acudiente.nombre,
-            },
-            "distribuciones": distribuciones,
-        }
+        return self._session.exec(statement).first()
 
     def get_detalle_matricula(self, detalle_id: int) -> tuple | None:
         statement = select(DetalleMatricula).where(DetalleMatricula.id == detalle_id)

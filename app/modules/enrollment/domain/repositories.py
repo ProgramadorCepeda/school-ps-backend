@@ -278,8 +278,8 @@ class EnrollmentRepository(ABC):
         ...
 
     @abstractmethod
-    def get_payment_receipt_data(self, pago_id: int) -> dict | None:
-        """Retorna los datos completos estructurados de un recibo de pago."""
+    def get_payment_receipt_data(self, pago_id: int) -> tuple | None:
+        """Retorna los datos crudos del recibo (Pago, Matricula, Estudiante, Grado, Acudiente) como tupla."""
         ...
 
     @abstractmethod

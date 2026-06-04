@@ -307,7 +307,6 @@ async def directed_payment(
     )
 
 
-
 @router.post(
     "/complementary",
     status_code=201,
@@ -435,7 +434,29 @@ async def get_payment_receipt(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
 
-    return PaymentReceiptResponse(**receipt_data)
+    return PaymentReceiptResponse(
+        pago_id=receipt_data.pago_id,
+        codigo_talonario=receipt_data.codigo_talonario,
+        monto_total=receipt_data.monto_total,
+        fecha_pago=receipt_data.fecha_pago,
+        observacion=receipt_data.observacion,
+        estudiante={
+            "id": receipt_data.estudiante_id,
+            "nombre": receipt_data.nombre_estudiante,
+            "documento": receipt_data.documento_estudiante,
+            "grado": receipt_data.grado_estudiante,
+        },
+        acudiente={
+            "nombre": receipt_data.nombre_acudiente,
+        },
+        distribuciones=[
+            {
+                "concepto": d.concepto,
+                "monto_aplicado": d.monto_aplicado,
+            }
+            for d in receipt_data.distribuciones
+        ],
+    )
 
 
 @router.delete(

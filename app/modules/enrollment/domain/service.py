@@ -3,6 +3,9 @@ from app.modules.enrollment.domain.entities import (
     EnrollmentBalance,
     EnrollmentCreated,
     PaymentAllocation,
+    PaymentDistribution,
+    PaymentHistoryItem,
+    PaymentReceipt,
     PaymentResult,
     StudentInfo,
 )
@@ -50,7 +53,9 @@ class EnrollmentService:
 
         if enrollment_exists:
             if matricula_id is None:
-                raise ValueError("El id de la matrícula no puede ser nulo cuando existe")
+                raise ValueError(
+                    "El id de la matrícula no puede ser nulo cuando existe"
+                )
             total_pending = pending_base + sum(
                 item.valor_pendiente for item in complementary_items
             )
@@ -603,3 +608,59 @@ class EnrollmentService:
             balance = self.get_balance(student.id, year)
             balances.append(balance)
         return balances
+
+    def get_payment_history(
+        self, student_id: int, year: int
+    ) -> list[PaymentHistoryItem]:
+        """Retorna el historial de pagos de un estudiante para un año dado."""
+        student = self.repo.get_student_by_id(student_id)
+        if student is None:
+            raise ValueError(f"Estudiante con ID {student_id} no encontrado")
+
+        matricula_id, _, _, _, _ = self.repo.get_enrollment_details(student_id, year)
+        if matricula_id is None:
+            return []
+
+        pagos = self.repo.get_payments_by_matricula(matricula_id)
+        return [
+            PaymentHistoryItem(
+                id=p.id,  # type: ignore[arg-type]
+                fecha_pago=p.fecha_pago.isoformat(),
+                codigo_talonario=p.codigo_talonario,
+                monto_total=p.monto_total,
+                observacion=p.observacion,
+            )
+            for p in pagos
+            if p.id is not None
+        ]
+
+    def get_payment_receipt(self, pago_id: int) -> PaymentReceipt:
+        """Construye el comprobante completo de un pago con la lógica de negocio."""
+        raw = self.repo.get_payment_receipt_data(pago_id)
+        if raw is None:
+            raise ValueError(f"Pago con ID {pago_id} no encontrado")
+
+        pago, _matricula, estudiante, grado, acudiente = raw
+
+        detalles = self.repo.get_payment_details(pago_id)
+        distribuciones = [
+            PaymentDistribution(
+                concepto=concepto,
+                monto_aplicado=monto,
+            )
+            for concepto, _comp_id, monto in detalles
+        ]
+
+        return PaymentReceipt(
+            pago_id=pago_id,
+            codigo_talonario=pago.codigo_talonario,
+            fecha_pago=pago.fecha_pago.isoformat(),
+            monto_total=pago.monto_total,
+            observacion=pago.observacion,
+            estudiante_id=estudiante.id,
+            nombre_estudiante=estudiante.nombre,
+            documento_estudiante=estudiante.documento,
+            grado_estudiante=grado.nombre,
+            nombre_acudiente=acudiente.nombre,
+            distribuciones=distribuciones,
+        )
