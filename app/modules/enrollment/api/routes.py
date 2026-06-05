@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, Query, UploadFile, File
+from fastapi import APIRouter, HTTPException, Query
 
 from app.core.db import SessionDep
 from app.modules.enrollment.application.assign_complementary import (
@@ -12,7 +12,6 @@ from app.modules.enrollment.application.create_complementary import (
 from app.modules.enrollment.application.get_enrollment_balance import (
     GetEnrollmentBalance,
 )
-from app.modules.enrollment.application.mass_enrollment import MassEnrollment
 from app.modules.enrollment.application.modify_enrollment import ModifyEnrollment
 from app.modules.enrollment.application.process_payment import ProcessDirectedPayment
 from app.modules.enrollment.application.register_enrollment import (
@@ -46,6 +45,8 @@ from app.modules.enrollment.schemas.response import (
     PaymentHistoryItemResponse,
     PaymentReceiptResponse,
     ComplementaryConceptResponse,
+    StudentReceiptInfo,
+    AcudienteReceiptInfo,
 )
 
 router = APIRouter(
@@ -311,50 +312,6 @@ async def directed_payment(
 
 
 @router.post(
-    "/register/massive/csv",
-    status_code=201,
-    summary="Registrar matrículas masivamente vía CSV",
-)
-async def register_massive_csv(
-    session: SessionDep,
-    periodo_id: int,
-    anio: int,
-    file: UploadFile = File(...),
-):
-    if not file.filename or not file.filename.lower().endswith(".csv"):
-        raise HTTPException(
-            status_code=400,
-            detail="Archivo inválido. Solo se admiten archivos con extensión .csv",
-        )
-    use_case = MassEnrollment(session=session)
-
-    content = await file.read()
-    return use_case.execute(content, periodo_id, anio)
-
-
-@router.post(
-    "/register/massive/txt",
-    status_code=201,
-    summary="Registrar matrículas masivamente vía TXT",
-)
-async def register_massive_txt(
-    session: SessionDep,
-    periodo_id: int,
-    anio: int,
-    file: UploadFile = File(...),
-):
-    if not file.filename or not file.filename.lower().endswith(".txt"):
-        raise HTTPException(
-            status_code=400,
-            detail="Archivo inválido. Solo se admiten archivos con extensión .txt",
-        )
-    use_case = MassEnrollment(session=session)
-
-    content = await file.read()
-    return use_case.execute(content, periodo_id, anio)
-
-
-@router.post(
     "/complementary",
     status_code=201,
     summary="Crear un concepto complementario nuevo",
@@ -481,7 +438,29 @@ async def get_payment_receipt(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
 
-    return PaymentReceiptResponse(**receipt_data)
+    return PaymentReceiptResponse(
+        pago_id=receipt_data.pago_id,
+        codigo_talonario=receipt_data.codigo_talonario,
+        monto_total=receipt_data.monto_total,
+        fecha_pago=receipt_data.fecha_pago,
+        observacion=receipt_data.observacion,
+        estudiante=StudentReceiptInfo(
+            id=receipt_data.estudiante_id,
+            nombre=receipt_data.nombre_estudiante,
+            documento=receipt_data.documento_estudiante,
+            grado=receipt_data.grado_estudiante,
+        ),
+        acudiente=AcudienteReceiptInfo(
+            nombre=receipt_data.nombre_acudiente,
+        ),
+        distribuciones=[
+            PaymentDistributionResponse(
+                concepto=d.concepto,
+                monto_aplicado=d.monto_aplicado,
+            )
+            for d in receipt_data.distribuciones
+        ],
+    )
 
 
 @router.delete(
