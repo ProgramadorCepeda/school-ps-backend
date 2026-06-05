@@ -468,17 +468,21 @@ class SQLEnrollmentRepository(EnrollmentRepository):
     def search_active_students(
         self, query: str | None, grado_id: int | None, limit: int, offset: int
     ) -> list[StudentGeneralInfo]:
-        statement = select(Estudiante, Grado).join(
-            Grado,
-            col(Estudiante.grado_id) == col(Grado.id),
-        ).where(col(Estudiante.activo))
+        statement = (
+            select(Estudiante, Grado)
+            .join(
+                Grado,
+                col(Estudiante.grado_id) == col(Grado.id),
+            )
+            .where(col(Estudiante.activo))
+        )
 
         if query:
             q_norm = f"%{query.strip().lower()}%"
             statement = statement.where(
                 or_(
                     func.lower(Estudiante.nombre).like(q_norm),
-                    func.lower(Estudiante.documento).like(q_norm)
+                    func.lower(Estudiante.documento).like(q_norm),
                 )
             )
         if grado_id is not None:
@@ -538,6 +542,7 @@ class SQLEnrollmentRepository(EnrollmentRepository):
             col(Complementario.estado_complemento) == "Activo",
         )
         return list(self._session.exec(statement).all())
+
     # === Nuevas Consultas y Acciones ===
 
     def get_grade_by_name(self, name: str) -> int | None:

@@ -98,6 +98,9 @@ class GradeInfo:
 
     id: int
     nombre: str
+
+
+@dataclass
 class PaymentHistoryItem:
     """Un pago dentro del historial de pagos de un estudiante."""
 

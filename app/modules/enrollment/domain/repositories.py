@@ -2,11 +2,15 @@ from abc import ABC, abstractmethod
 
 from app.modules.enrollment.domain.entities import (
     ComplementaryDetail,
-    StudentInfo,
-    StudentGeneralInfo,
     GradeInfo,
+    StudentGeneralInfo,
+    StudentInfo,
 )
-from app.modules.enrollment.infrastructure.models import Estudiante, Complementario
+from app.modules.enrollment.infrastructure.models import (
+    Complementario,
+    Estudiante,
+    Pago,
+)
 
 
 class EnrollmentRepository(ABC):
@@ -276,6 +280,7 @@ class EnrollmentRepository(ABC):
     @abstractmethod
     def get_all_complementaries_by_year(self, year: int) -> list[Complementario]:
         """Obtiene todos los conceptos complementarios activos por año."""
+
     # === Nuevas Consultas y Acciones ===
 
     @abstractmethod
@@ -296,7 +301,7 @@ class EnrollmentRepository(ABC):
         ...
 
     @abstractmethod
-    def get_payments_by_matricula(self, matricula_id: int) -> list:
+    def get_payments_by_matricula(self, matricula_id: int) -> list[Pago]:
         """Retorna todos los pagos (Pago) de una matrícula."""
         ...
 

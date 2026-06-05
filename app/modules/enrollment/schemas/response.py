@@ -1,4 +1,5 @@
 from datetime import datetime
+
 from pydantic import BaseModel
 
 
@@ -127,18 +128,9 @@ class ComplementaryConceptResponse(BaseModel):
     uso_matricula: bool
 
 
-class PaymentHistoryItemResponse(BaseModel):
-    """Esquema de respuesta para un pago en el historial de pagos."""
-
-    id: int
-    fecha_pago: str
-    codigo_talonario: str
-    monto_total: int
-    observacion: str | None = None
-
-
 class ReceiptStudentResponse(BaseModel):
     """Info del estudiante dentro del recibo."""
+
 
 class PaymentHistoryItemResponse(BaseModel):
     """DTO para un ítem del historial de pagos (auditoría)."""
@@ -170,19 +162,6 @@ class ReceiptDistributionResponse(BaseModel):
 
     concepto: str
     monto_aplicado: int
-
-
-class PaymentReceiptResponse(BaseModel):
-    """Respuesta completa del comprobante de pago."""
-
-    pago_id: int
-    codigo_talonario: str
-    fecha_pago: str
-    monto_total: int
-    observacion: str | None = None
-    estudiante: ReceiptStudentResponse
-    acudiente: ReceiptGuardianResponse
-    distribuciones: list[ReceiptDistributionResponse]
 
 
 class PaymentReceiptResponse(BaseModel):

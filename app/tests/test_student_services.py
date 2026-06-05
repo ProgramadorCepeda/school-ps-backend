@@ -112,7 +112,10 @@ def test_student_service_all_functionalities(session):
     # Búsqueda por query (nombre parcial, normalizado a minúsculas)
     res_query = student_service.search_active_students(query="cepeda")
     assert len(res_query) == 2
-    assert {s.nombre for s in res_query} == {"Juan Andres Cepeda", "Maria Camila Cepeda"}
+    assert {s.nombre for s in res_query} == {
+        "Juan Andres Cepeda",
+        "Maria Camila Cepeda",
+    }
 
     # Búsqueda por query (documento exacto o parcial)
     res_doc = student_service.search_active_students(query="1005111222")
@@ -157,7 +160,10 @@ def test_student_service_all_functionalities(session):
     # Test 5: get_students_by_grade (Obtener lista de entidades Estudiante crudas por grado)
     grade_10_students = student_service.get_students_by_grade(grado_10.id)
     assert len(grade_10_students) == 2
-    assert {s.nombre for s in grade_10_students} == {"Juan Andres Cepeda", "Maria Camila Cepeda"}
+    assert {s.nombre for s in grade_10_students} == {
+        "Juan Andres Cepeda",
+        "Maria Camila Cepeda",
+    }
     # Verifica que son objetos Estudiante (entidades crudas) y tienen sus campos/atributos completos
     assert isinstance(grade_10_students[0], Estudiante)
 
@@ -232,12 +238,16 @@ def test_student_endpoints(session, client):
     assert "grado_nombre" in data[0]
 
     # Filter by grade
-    resp_grade = client.get("/api/v1/enrollment/students/active", params={"grado_id": grado_11.id})
+    resp_grade = client.get(
+        "/api/v1/enrollment/students/active", params={"grado_id": grado_11.id}
+    )
     assert resp_grade.status_code == status.HTTP_200_OK
     assert len(resp_grade.json()) == 0  # Since est_inactivo is False (inactive)
 
     # Endpoint 2: POST /api/v1/enrollment/students/bulk (Retrieve student basic info in bulk)
-    resp_bulk = client.post("/api/v1/enrollment/students/bulk", json=[est1.id, est_inactivo.id])
+    resp_bulk = client.post(
+        "/api/v1/enrollment/students/bulk", json=[est1.id, est_inactivo.id]
+    )
     assert resp_bulk.status_code == status.HTTP_200_OK
     data_bulk = resp_bulk.json()
     assert len(data_bulk) == 2
@@ -288,8 +298,11 @@ def test_get_complementary_concepts_endpoint(session, client):
     resp = client.get("/api/v1/enrollment/complementary", params={"year": 2026})
     assert resp.status_code == status.HTTP_200_OK
     data = resp.json()
-    
+
     # Check that we only get Active concepts for the year 2026
     assert len(data) == 2
-    assert {c["tipo_complementario"] for c in data} == {"Seguro Estudiantil", "Sistematización"}
+    assert {c["tipo_complementario"] for c in data} == {
+        "Seguro Estudiantil",
+        "Sistematización",
+    }
     assert {c["valor"] for c in data} == {50000, 30000}

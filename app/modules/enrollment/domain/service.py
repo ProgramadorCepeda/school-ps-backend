@@ -2,18 +2,17 @@ from app.modules.enrollment.domain.entities import (
     ComplementaryDetail,
     EnrollmentBalance,
     EnrollmentCreated,
+    GradeInfo,
     PaymentAllocation,
     PaymentDistribution,
     PaymentHistoryItem,
     PaymentReceipt,
     PaymentResult,
-    StudentInfo,
     StudentGeneralInfo,
-    GradeInfo,
+    StudentInfo,
 )
 from app.modules.enrollment.domain.repositories import EnrollmentRepository
 from app.modules.enrollment.infrastructure.models import Estudiante
-
 from app.modules.enrollment.schemas.request import ModifyEnrollmentRequest
 
 
@@ -620,7 +619,11 @@ class StudentService:
         self.repo = repository
 
     def search_active_students(
-        self, query: str | None = None, grado_id: int | None = None, limit: int = 10, offset: int = 0
+        self,
+        query: str | None = None,
+        grado_id: int | None = None,
+        limit: int = 10,
+        offset: int = 0,
     ) -> list[StudentGeneralInfo]:
         """Servicio 1: Búsqueda general de estudiantes activos."""
         return self.repo.search_active_students(
@@ -644,6 +647,7 @@ class StudentService:
     def get_students_by_grade(self, grado_id: int) -> list[Estudiante]:
         """Servicio 5: Obtiene la lista de entidades Estudiante crudas en un grado."""
         return self.repo.get_student_entities_by_grade(grado_id)
+
     def get_payment_history(
         self, student_id: int, year: int
     ) -> list[PaymentHistoryItem]:
