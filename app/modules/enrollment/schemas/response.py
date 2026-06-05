@@ -101,37 +101,6 @@ class StudentSearchListResponse(BaseModel):
     total_resultados: int
 
 
-class StudentGeneralInfoResponse(BaseModel):
-    """Información básica y resumida del estudiante para búsquedas y consultas lote."""
-
-    id: int
-    nombre: str
-    documento: str
-    grado_nombre: str
-
-
-class GradeInfoResponse(BaseModel):
-    """Información básica de un grado académico."""
-
-    id: int
-    nombre: str
-
-
-class ComplementaryConceptResponse(BaseModel):
-    """Esquema de respuesta para un concepto complementario."""
-
-    id: int
-    tipo_complementario: str
-    anio: int
-    valor: int
-    estado_complemento: str
-    uso_matricula: bool
-
-
-class ReceiptStudentResponse(BaseModel):
-    """Info del estudiante dentro del recibo."""
-
-
 class PaymentHistoryItemResponse(BaseModel):
     """DTO para un ítem del historial de pagos (auditoría)."""
 
@@ -155,13 +124,6 @@ class AcudienteReceiptInfo(BaseModel):
     """DTO de acudiente para el comprobante."""
 
     nombre: str
-
-
-class ReceiptDistributionResponse(BaseModel):
-    """Detalle de distribución dentro del recibo."""
-
-    concepto: str
-    monto_aplicado: int
 
 
 class PaymentReceiptResponse(BaseModel):
