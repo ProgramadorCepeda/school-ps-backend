@@ -1,12 +1,12 @@
 from datetime import datetime
 
-from sqlmodel import col, Session, select, or_, func
+from sqlmodel import Session, col, func, or_, select
 
 from app.modules.enrollment.domain.entities import (
     ComplementaryDetail,
-    StudentInfo,
-    StudentGeneralInfo,
     GradeInfo,
+    StudentGeneralInfo,
+    StudentInfo,
 )
 from app.modules.enrollment.domain.repositories import EnrollmentRepository
 from app.modules.enrollment.infrastructure.models import (
@@ -492,7 +492,7 @@ class SQLEnrollmentRepository(EnrollmentRepository):
         results = self._session.exec(statement).all()
         return [
             StudentGeneralInfo(
-                id=est.id,  # type: ignore
+                id=est.id,
                 nombre=est.nombre,
                 documento=est.documento,
                 grado_nombre=gr.nombre,
@@ -510,7 +510,7 @@ class SQLEnrollmentRepository(EnrollmentRepository):
         results = self._session.exec(statement).all()
         return [
             StudentGeneralInfo(
-                id=est.id,  # type: ignore
+                id=est.id,
                 nombre=est.nombre,
                 documento=est.documento,
                 grado_nombre=gr.nombre,
