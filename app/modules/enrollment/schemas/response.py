@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel
 
 
@@ -139,13 +140,27 @@ class PaymentHistoryItemResponse(BaseModel):
 class ReceiptStudentResponse(BaseModel):
     """Info del estudiante dentro del recibo."""
 
+class PaymentHistoryItemResponse(BaseModel):
+    """DTO para un ítem del historial de pagos (auditoría)."""
+
+    id: int
+    codigo_talonario: str
+    monto_total: int
+    fecha_pago: datetime
+    observacion: str | None = None
+
+
+class StudentReceiptInfo(BaseModel):
+    """DTO de estudiante para el comprobante."""
+
+    id: int
     nombre: str
     documento: str
     grado: str
 
 
-class ReceiptGuardianResponse(BaseModel):
-    """Info del acudiente dentro del recibo."""
+class AcudienteReceiptInfo(BaseModel):
+    """DTO de acudiente para el comprobante."""
 
     nombre: str
 
@@ -170,3 +185,14 @@ class PaymentReceiptResponse(BaseModel):
     distribuciones: list[ReceiptDistributionResponse]
 
 
+class PaymentReceiptResponse(BaseModel):
+    """DTO completo del comprobante de pago."""
+
+    pago_id: int
+    codigo_talonario: str
+    monto_total: int
+    fecha_pago: datetime
+    observacion: str | None = None
+    estudiante: StudentReceiptInfo
+    acudiente: AcudienteReceiptInfo
+    distribuciones: list[PaymentDistributionResponse]

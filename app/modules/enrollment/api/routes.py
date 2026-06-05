@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, Query, UploadFile, File
+from fastapi import APIRouter, HTTPException, Query
 
 from app.core.db import SessionDep
 from app.modules.enrollment.application.assign_complementary import (
@@ -12,19 +12,25 @@ from app.modules.enrollment.application.create_complementary import (
 from app.modules.enrollment.application.get_enrollment_balance import (
     GetEnrollmentBalance,
 )
-from app.modules.enrollment.application.mass_enrollment import MassEnrollment
 from app.modules.enrollment.application.modify_enrollment import ModifyEnrollment
 from app.modules.enrollment.application.process_payment import ProcessDirectedPayment
 from app.modules.enrollment.application.register_enrollment import (
     RegisterEnrollment,
 )
 from app.modules.enrollment.application.search_students import SearchStudents
+from app.modules.enrollment.application.manual_enrollment import ManualEnrollment
+from app.modules.enrollment.application.get_payment_history import GetPaymentHistory
+from app.modules.enrollment.application.get_payment_receipt import GetPaymentReceipt
+from app.modules.enrollment.application.disassociate_complementary import (
+    DisassociateComplementary,
+)
 from app.modules.enrollment.schemas.request import (
     DirectedPaymentRequest,
     RegisterEnrollmentRequest,
     ModifyEnrollmentRequest,
     ComplementaryCreateRequest,
     AssignComplementaryRequest,
+    ManualEnrollmentRequest,
 )
 from app.modules.enrollment.schemas.response import (
     ComplementaryItemResponse,
@@ -43,6 +49,10 @@ from app.modules.enrollment.schemas.response import (
     StudentGeneralInfoResponse,
     GradeInfoResponse,
     ComplementaryConceptResponse,
+    PaymentHistoryItemResponse,
+    PaymentReceiptResponse,
+    StudentReceiptInfo,
+    AcudienteReceiptInfo,
 )
 from app.modules.enrollment.infrastructure.models import (
     Acudiente,
@@ -271,7 +281,8 @@ async def directed_payment(
     use_case = ProcessDirectedPayment(session=session)
 
     asignaciones = [
-        (a.concepto, a.complementario_id, a.monto) for a in request.asignaciones
+        (a.concepto, a.complementario_id, a.detalle_id, a.monto)
+        for a in request.asignaciones
     ]
 
     try:
@@ -314,50 +325,6 @@ async def directed_payment(
         matricula_pagada=result.matricula_pagada,
         mensaje=mensaje,
     )
-
-
-@router.post(
-    "/register/massive/csv",
-    status_code=201,
-    summary="Registrar matrículas masivamente vía CSV",
-)
-async def register_massive_csv(
-    session: SessionDep,
-    periodo_id: int,
-    anio: int,
-    file: UploadFile = File(...),
-):
-    if not file.filename or not file.filename.lower().endswith(".csv"):
-        raise HTTPException(
-            status_code=400,
-            detail="Archivo inválido. Solo se admiten archivos con extensión .csv",
-        )
-    use_case = MassEnrollment(session=session)
-
-    content = await file.read()
-    return use_case.execute(content, periodo_id, anio)
-
-
-@router.post(
-    "/register/massive/txt",
-    status_code=201,
-    summary="Registrar matrículas masivamente vía TXT",
-)
-async def register_massive_txt(
-    session: SessionDep,
-    periodo_id: int,
-    anio: int,
-    file: UploadFile = File(...),
-):
-    if not file.filename or not file.filename.lower().endswith(".txt"):
-        raise HTTPException(
-            status_code=400,
-            detail="Archivo inválido. Solo se admiten archivos con extensión .txt",
-        )
-    use_case = MassEnrollment(session=session)
-
-    content = await file.read()
-    return use_case.execute(content, periodo_id, anio)
 
 
 @router.post(
@@ -410,115 +377,40 @@ async def assign_complementary(
     }
 
 
-@router.get(
-    "/students/active",
-    response_model=list[StudentGeneralInfoResponse],
-    summary="Buscar estudiantes activos",
-    description="Retorna una lista paginada de estudiantes activos filtrados opcionalmente por nombre/documento o grado.",
-)
-async def search_active_students(
-    session: SessionDep,
-    query: str | None = Query(default=None, description="Búsqueda por nombre o documento"),
-    grado_id: int | None = Query(default=None, description="Filtrar por grado académico"),
-    limit: int = Query(default=10, description="Límite de paginación"),
-    offset: int = Query(default=0, description="Offset de paginación"),
-) -> list[StudentGeneralInfoResponse]:
-    service = StudentService(SQLEnrollmentRepository(session))
-    results = service.search_active_students(query=query, grado_id=grado_id, limit=limit, offset=offset)
-    return [
-        StudentGeneralInfoResponse(
-            id=s.id,
-            nombre=s.nombre,
-            documento=s.documento,
-            grado_nombre=s.grado_nombre,
-        )
-        for s in results
-    ]
-
-
 @router.post(
-    "/students/bulk",
-    response_model=list[StudentGeneralInfoResponse],
-    summary="Obtener información de estudiantes por lote",
-    description="Recibe una lista de IDs de estudiantes y retorna su información básica.",
+    "/students/manual",
+    status_code=201,
+    summary="Registrar y matricular manualmente a un estudiante",
 )
-async def get_students_bulk(
+async def manual_enrollment(
     session: SessionDep,
-    student_ids: list[int],
-) -> list[StudentGeneralInfoResponse]:
-    service = StudentService(SQLEnrollmentRepository(session))
-    results = service.get_students_bulk(student_ids)
-    return [
-        StudentGeneralInfoResponse(
-            id=s.id,
-            nombre=s.nombre,
-            documento=s.documento,
-            grado_nombre=s.grado_nombre,
+    request: ManualEnrollmentRequest,
+):
+    use_case = ManualEnrollment(session=session)
+    try:
+        matricula_id = use_case.execute(
+            documento=request.documento,
+            nombre=request.nombre,
+            grado_str=request.grado,
+            nombre_acudiente=request.nombre_acudiente,
+            periodo_id=request.periodo_id,
+            anio=request.anio,
         )
-        for s in results
-    ]
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
-
-@router.get(
-    "/grades",
-    response_model=list[GradeInfoResponse],
-    summary="Obtener listado de grados disponibles",
-    description="Retorna la lista de todos los grados académicos registrados.",
-)
-async def get_all_grades(
-    session: SessionDep,
-) -> list[GradeInfoResponse]:
-    service = StudentService(SQLEnrollmentRepository(session))
-    results = service.get_all_grades()
-    return [
-        GradeInfoResponse(
-            id=g.id,
-            nombre=g.nombre,
-        )
-        for g in results
-    ]
-
-
-@router.get(
-    "/complementary",
-    response_model=list[ComplementaryConceptResponse],
-    summary="Obtener todos los conceptos complementarios activos por año",
-)
-async def get_complementaries(
-    session: SessionDep,
-    year: int | None = Query(
-        default=None,
-        description="Año a consultar. Si no se envía, se usa el año actual.",
-    ),
-) -> list[ComplementaryConceptResponse]:
-    if year is None:
-        year = datetime.now().year
-    repo = SQLEnrollmentRepository(session)
-    results = repo.get_all_complementaries_by_year(year)
-    return [
-        ComplementaryConceptResponse(
-            id=c.id,  # type: ignore
-            tipo_complementario=c.tipo_complementario,
-            anio=c.anio,
-            valor=c.valor,
-            estado_complemento=c.estado_complemento,
-            uso_matricula=c.uso_matricula,
-        )
-        for c in results
-        if c.id is not None
-    ]
+    return {
+        "mensaje": "Estudiante matriculado manualmente de forma exitosa",
+        "matricula_id": matricula_id,
+    }
 
 
 @router.get(
     "/students/{student_id}/payments",
     response_model=list[PaymentHistoryItemResponse],
-    summary="Obtener historial de pagos de un estudiante",
-    description=(
-        "Retorna la lista de pagos realizados por un estudiante "
-        "para un año determinado. Si no se envía año, se usa el actual."
-    ),
+    summary="Obtener el historial de pagos (auditoría) de un estudiante",
 )
-async def get_student_payments(
+async def get_payment_history(
     session: SessionDep,
     student_id: int,
     year: int | None = Query(
@@ -529,97 +421,85 @@ async def get_student_payments(
     if year is None:
         year = datetime.now().year
 
-    repo = SQLEnrollmentRepository(session)
-
-    # Obtener la matrícula del estudiante para el año dado
-    mat_id, _estado, _comps, _pend, _total = repo.get_enrollment_details(
-        student_id, year
-    )
-
-    if mat_id is None:
-        return []
-
-    pagos = repo.get_payments(mat_id)
+    use_case = GetPaymentHistory(session=session)
+    try:
+        payments = use_case.execute(student_id, year)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
     return [
         PaymentHistoryItemResponse(
-            id=p.id,  # type: ignore
-            fecha_pago=p.fecha_pago.isoformat(),
+            id=p.id,
             codigo_talonario=p.codigo_talonario,
             monto_total=p.monto_total,
+            fecha_pago=p.fecha_pago,
             observacion=p.observacion,
         )
-        for p in pagos
-        if p.id is not None
+        for p in payments
     ]
 
 
 @router.get(
     "/payments/{pago_id}/receipt",
     response_model=PaymentReceiptResponse,
-    summary="Obtener comprobante/recibo de un pago",
-    description=(
-        "Retorna los datos completos del comprobante de pago, incluyendo "
-        "información del estudiante, acudiente y distribución del pago."
-    ),
+    summary="Obtener los datos del comprobante de pago por ID",
 )
 async def get_payment_receipt(
     session: SessionDep,
     pago_id: int,
 ) -> PaymentReceiptResponse:
-    from sqlmodel import select
-
-    # 1. Obtener el pago
-    pago = session.exec(select(Pago).where(Pago.id == pago_id)).first()
-    if pago is None:
-        raise HTTPException(status_code=404, detail="Pago no encontrado")
-
-    # 2. Obtener matrícula → estudiante → grado + acudiente
-    matricula = session.exec(
-        select(Matricula).where(Matricula.id == pago.matricula_id)
-    ).first()
-    if matricula is None:
-        raise HTTPException(status_code=404, detail="Matrícula asociada no encontrada")
-
-    estudiante = session.exec(
-        select(Estudiante).where(Estudiante.id == matricula.estudiante_id)
-    ).first()
-    if estudiante is None:
-        raise HTTPException(status_code=404, detail="Estudiante no encontrado")
-
-    grado = session.exec(
-        select(Grado).where(Grado.id == estudiante.grado_id)
-    ).first()
-
-    acudiente = session.exec(
-        select(Acudiente).where(Acudiente.id == estudiante.acudiente_id)
-    ).first()
-
-    # 3. Obtener distribuciones del pago
-    detalles = session.exec(
-        select(PagoDetalle).where(PagoDetalle.pago_id == pago_id)
-    ).all()
+    use_case = GetPaymentReceipt(session=session)
+    try:
+        receipt_data = use_case.execute(pago_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
     return PaymentReceiptResponse(
-        pago_id=pago_id,
-        codigo_talonario=pago.codigo_talonario,
-        fecha_pago=pago.fecha_pago.isoformat(),
-        monto_total=pago.monto_total,
-        observacion=pago.observacion,
-        estudiante=ReceiptStudentResponse(
-            nombre=estudiante.nombre,
-            documento=estudiante.documento,
-            grado=grado.nombre if grado else "Sin grado",
+        pago_id=receipt_data.pago_id,
+        codigo_talonario=receipt_data.codigo_talonario,
+        monto_total=receipt_data.monto_total,
+        fecha_pago=receipt_data.fecha_pago,
+        observacion=receipt_data.observacion,
+        estudiante=StudentReceiptInfo(
+            id=receipt_data.estudiante_id,
+            nombre=receipt_data.nombre_estudiante,
+            documento=receipt_data.documento_estudiante,
+            grado=receipt_data.grado_estudiante,
         ),
-        acudiente=ReceiptGuardianResponse(
-            nombre=acudiente.nombre if acudiente else "Sin acudiente",
+        acudiente=AcudienteReceiptInfo(
+            nombre=receipt_data.nombre_acudiente,
         ),
         distribuciones=[
-            ReceiptDistributionResponse(
+            PaymentDistributionResponse(
                 concepto=d.concepto,
                 monto_aplicado=d.monto_aplicado,
             )
-            for d in detalles
+            for d in receipt_data.distribuciones
         ],
     )
 
+
+@router.delete(
+    "/details/{detalle_id}",
+    status_code=200,
+    summary="Desvincular un concepto complementario de un estudiante",
+    description=(
+        "Permite eliminar un concepto complementario específico asignado a un estudiante "
+        "siempre y cuando no tenga abonos registrados para ese concepto."
+    ),
+)
+async def disassociate_complementary(
+    session: SessionDep,
+    detalle_id: int,
+):
+    use_case = DisassociateComplementary(session=session)
+    try:
+        matricula_id = use_case.execute(detalle_id=detalle_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    return {
+        "mensaje": "Concepto complementario desvinculado exitosamente",
+        "detalle_id": detalle_id,
+        "matricula_id": matricula_id,
+    }
