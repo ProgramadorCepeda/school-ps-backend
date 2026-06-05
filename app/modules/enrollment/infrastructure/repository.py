@@ -137,7 +137,7 @@ class SQLEnrollmentRepository(EnrollmentRepository):
     def get_active_complementaries(self, year: int) -> list[tuple[int, str, int]]:
         statement = select(Complementario).where(
             Complementario.anio == year,
-            col(Complementario.uso_matricula) == True,
+            col(Complementario.uso_matricula),
             Complementario.estado_complemento == "Activo",
         )
         results = self._session.exec(statement).all()
@@ -531,14 +531,28 @@ class SQLEnrollmentRepository(EnrollmentRepository):
         self, pago_id: int
     ) -> tuple[Pago, Matricula, Estudiante, Grado, Acudiente] | None:
         statement = (
-            select(Pago, Matricula, Estudiante, Grado, Acudiente)
+            select(Pago, Matricula, Estudiante, Grado)
             .join(Matricula, col(Pago.matricula_id) == col(Matricula.id))
             .join(Estudiante, col(Matricula.estudiante_id) == col(Estudiante.id))
             .join(Grado, col(Estudiante.grado_id) == col(Grado.id))
-            .join(Acudiente, col(Estudiante.acudiente_id) == col(Acudiente.id))
             .where(Pago.id == pago_id)
         )
-        return self._session.exec(statement).first()
+        result = self._session.exec(statement).first()
+        if result is None:
+            return None
+
+        pago, matricula, estudiante, grado = result
+
+        acudiente_stmt = select(Acudiente).where(
+            Acudiente.id == estudiante.acudiente_id
+        )
+
+        acudiente = self._session.exec(acudiente_stmt).first()
+
+        if acudiente is None:
+            return None
+
+        return pago, matricula, estudiante, grado, acudiente
 
     def get_detalle_matricula(self, detalle_id: int) -> tuple | None:
         statement = select(DetalleMatricula).where(DetalleMatricula.id == detalle_id)
