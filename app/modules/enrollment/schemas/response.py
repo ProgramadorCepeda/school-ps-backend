@@ -1,4 +1,5 @@
 from datetime import datetime
+
 from pydantic import BaseModel
 
 
@@ -147,3 +148,24 @@ class ComplementaryConceptResponse(BaseModel):
     valor: int
     estado_complemento: str
     uso_matricula: bool
+
+
+class StudentResponse(BaseModel):
+    grado_id: int
+    acudiente_id: int
+    nombre: str
+    documento: str
+    activo: bool
+    fecha_activo: datetime | None
+
+
+class GradeResponse(BaseModel):
+    id: int
+    nombre: str
+
+
+class StudentGeneralResponse(BaseModel):
+    id: int
+    nombre: str
+    documento: str
+    grado_nombre: str
