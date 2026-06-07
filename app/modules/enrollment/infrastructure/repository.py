@@ -664,7 +664,9 @@ class SQLEnrollmentRepository(EnrollmentRepository):
     def get_all_complementaries(
         self, year: int | None = None
     ) -> list[ComplementaryConcept]:
-        statement = select(Complementario)
+        statement = select(Complementario).where(
+            Complementario.estado_complemento == "Activo"
+        )
         if year is not None:
             statement = statement.where(Complementario.anio == year)
         results = self._session.exec(statement).all()

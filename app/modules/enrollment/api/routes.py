@@ -23,8 +23,13 @@ from app.modules.enrollment.application.process_payment import ProcessDirectedPa
 from app.modules.enrollment.application.register_enrollment import (
     RegisterEnrollment,
 )
-from app.modules.enrollment.application.search_students import SearchStudents
+from app.modules.enrollment.application.get_all_grades import GetAllGrades
 from app.modules.enrollment.application.get_complementaries import GetComplementaries
+from app.modules.enrollment.application.get_students_bulk import GetStudentsBulk
+from app.modules.enrollment.application.search_active_students import (
+    SearchActiveStudents,
+)
+from app.modules.enrollment.application.search_students import SearchStudents
 from app.modules.enrollment.schemas.request import (
     AssignComplementaryRequest,
     ComplementaryCreateRequest,
@@ -47,6 +52,8 @@ from app.modules.enrollment.schemas.response import (
     StudentReceiptInfo,
     StudentSearchItemResponse,
     StudentSearchListResponse,
+    GradeResponse,
+    StudentGeneralResponse,
 )
 
 router = APIRouter(
@@ -515,3 +522,46 @@ async def get_complementaries(
         )
         for item in results
     ]
+
+
+@router.get(
+    "/students/active",
+    response_model=list[StudentGeneralResponse],
+    summary="Buscar estudiantes activos",
+)
+async def search_active_students(
+    session: SessionDep,
+    query: str | None = Query(
+        default=None, description="Nombre o documento del estudiante"
+    ),
+    grado_id: int | None = Query(default=None, description="Filtrar por grado"),
+    limit: int = Query(default=10, description="Límite de resultados"),
+    offset: int = Query(default=0, description="Offset de paginación"),
+) -> list[StudentGeneralResponse]:
+    use_case = SearchActiveStudents(session=session)
+    return use_case.execute(query=query, grado_id=grado_id, limit=limit, offset=offset)
+
+
+@router.post(
+    "/students/bulk",
+    response_model=list[StudentGeneralResponse],
+    summary="Obtener estudiantes por lote (Bulk)",
+)
+async def get_students_bulk(
+    session: SessionDep,
+    student_ids: list[int],
+) -> list[StudentGeneralResponse]:
+    use_case = GetStudentsBulk(session=session)
+    return use_case.execute(student_ids)
+
+
+@router.get(
+    "/grades",
+    response_model=list[GradeResponse],
+    summary="Listar todos los grados académicos",
+)
+async def get_all_grades(
+    session: SessionDep,
+) -> list[GradeResponse]:
+    use_case = GetAllGrades(session=session)
+    return use_case.execute()
