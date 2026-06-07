@@ -118,27 +118,40 @@ def seed() -> None:
         assert periodo.id is not None
 
         # === PARAMETRIZAR MATRÍCULA (costo base por grado y año) ===
-        param_sexto = ParametrizarMatricula(
-            grado_id=grados[5].id or 1,
-            anio=2026,
-            valor=850000,  # type: ignore[arg-type]
-        )
-        param_decimo = ParametrizarMatricula(
-            grado_id=grados[10].id or 1,
-            anio=2026,
-            valor=950000,  # type: ignore[arg-type]
-        )
-        param_segundo = ParametrizarMatricula(
-            grado_id=grados[2].id or 1,
-            anio=2026,
-            valor=750000,  # type: ignore[arg-type]
-        )
+        params_matricula = []
+        param_map = {}
+        for g in grados:
+            idx = grados.index(g)
+            val = 600000 + idx * 50000
+
+            # Ajustamos específicos para mantener los valores originales para Quinto (index 5), Décimo (index 10) y Segundo (index 2)
+            if idx == 5:
+                val = 850000
+            elif idx == 10:
+                val = 950000
+            elif idx == 2:
+                val = 750000
+
+            pm = ParametrizarMatricula(
+                grado_id=g.id or 1,
+                anio=2026,
+                valor=val,  # type: ignore[arg-type]
+            )
+            params_matricula.append(pm)
+            param_map[idx] = pm
+
+        param_sexto = param_map[5]
+        param_decimo = param_map[10]
+        param_segundo = param_map[2]
+
         param_sexto_2025 = ParametrizarMatricula(
             grado_id=grados[5].id or 1,
             anio=2025,
             valor=800000,  # type: ignore[arg-type]
         )
-        session.add_all([param_sexto, param_decimo, param_segundo, param_sexto_2025])
+        params_matricula.append(param_sexto_2025)
+
+        session.add_all(params_matricula)
         session.flush()
 
         assert param_sexto.id is not None
