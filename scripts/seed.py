@@ -343,6 +343,7 @@ def seed() -> None:
         )
         session.add(pago_juan)
         session.flush()
+        assert pago_juan.id is not None
 
         session.add_all(
             [
@@ -371,6 +372,7 @@ def seed() -> None:
         )
         session.add(pago_ana)
         session.flush()
+        assert pago_ana.id is not None
 
         session.add_all(
             [
