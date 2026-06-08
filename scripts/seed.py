@@ -344,17 +344,18 @@ def seed() -> None:
         session.add(pago_juan)
         session.flush()
         assert pago_juan.id is not None
+        pago_juan_id: int = pago_juan.id
 
         session.add_all(
             [
                 PagoDetalle(
-                    pago_id=pago_juan.id,
+                    pago_id=pago_juan_id,
                     concepto="complementario",
                     complementario_id=comp_agenda.id,
                     monto_aplicado=40000,
                 ),
                 PagoDetalle(
-                    pago_id=pago_juan.id,
+                    pago_id=pago_juan_id,
                     concepto="complementario",
                     complementario_id=comp_plataforma.id,
                     monto_aplicado=70000,
@@ -373,29 +374,30 @@ def seed() -> None:
         session.add(pago_ana)
         session.flush()
         assert pago_ana.id is not None
+        pago_ana_id: int = pago_ana.id
 
         session.add_all(
             [
                 PagoDetalle(
-                    pago_id=pago_ana.id,
+                    pago_id=pago_ana_id,
                     concepto="matricula_base",
                     complementario_id=None,
                     monto_aplicado=950000,
                 ),
                 PagoDetalle(
-                    pago_id=pago_ana.id,
+                    pago_id=pago_ana_id,
                     concepto="complementario",
                     complementario_id=comp_seguro.id,
                     monto_aplicado=120000,
                 ),
                 PagoDetalle(
-                    pago_id=pago_ana.id,
+                    pago_id=pago_ana_id,
                     concepto="complementario",
                     complementario_id=comp_agenda.id,
                     monto_aplicado=45000,
                 ),
                 PagoDetalle(
-                    pago_id=pago_ana.id,
+                    pago_id=pago_ana_id,
                     concepto="complementario",
                     complementario_id=comp_carnet.id,
                     monto_aplicado=25000,
