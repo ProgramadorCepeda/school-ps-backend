@@ -147,12 +147,16 @@ async def search_students(
         default=None,
         description="Año a consultar. Si no se envía, se usa el año actual.",
     ),
+    query: str | None = Query(
+        default=None,
+        description="Búsqueda unificada por documento/código o nombre",
+    ),
 ) -> StudentSearchListResponse:
     if year is None:
         year = datetime.now().year
 
     use_case = SearchStudents(session=session)
-    balances = use_case.execute(documento, nombre, year)
+    balances = use_case.execute(documento, nombre, year, query)
 
     items = []
     for b in balances:
@@ -342,20 +346,40 @@ async def create_complementary(
 
 
 @router.post(
-    "/{matricula_id}/complementary/assign",
+    "/students/{student_id}/complementary/assign",
     status_code=201,
     summary="Asignar un complementario a una matrícula existente",
 )
 async def assign_complementary(
     session: SessionDep,
-    matricula_id: int,
+    student_id: int,
     request: AssignComplementaryRequest,
+    year: int | None = Query(
+        default=None,
+        description="Año de la matrícula. Si no se envía, se usa el año actual.",
+    ),
 ):
+    if year is None:
+        year = datetime.now().year
+
+    # Obtener el balance para resolver la matricula_id activa del estudiante
+    use_case_balance = GetEnrollmentBalance(session=session)
+    try:
+        balance = use_case_balance.execute(student_id, year)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+    if not balance.enrollment_exists or balance.matricula_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"El estudiante con ID {student_id} no tiene matrícula activa para el año {year}",
+        )
+
     use_case = AssignComplementary(session=session)
 
     try:
         detalle_id = use_case.execute(
-            matricula_id=matricula_id,
+            matricula_id=balance.matricula_id,
             complementary_id=request.complementario_id,
             descuento=request.descuento,
         )

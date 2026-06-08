@@ -100,6 +100,10 @@ class EnrollmentService:
         2. Asigna complementarios activos con uso_matricula=True
         4. Crea registro Matricula + DetalleMatricula
         """
+        if not self.repo.period_exists(period_id):
+            msg = f"El período académico con ID {period_id} no existe en el sistema"
+            raise ValueError(msg)
+
         student = self.repo.get_student_by_id(student_id)
         if student is None:
             msg = f"Estudiante con id {student_id} no encontrado"
@@ -387,7 +391,7 @@ class EnrollmentService:
             ],
         )
 
-        # Actualizar el estado semafórico de la matrícula (sin_abono / parcial / paz_y_salvo)
+        # Actualizar el estado semafórico de la matrícula (pendiente / parcial / paz_y_salvo)
         self._update_enrollment_state(matricula_id)
         saldo = self._calculate_total_pending(matricula_id)
 
@@ -480,7 +484,7 @@ class EnrollmentService:
         """Calcula y actualiza el estado semáfórico de la matrícula.
 
         Estados (MAT-RF-04 / MAT-RF-05):
-        - 'sin_abono'  : Existe la obligación pero no hay ningún pago registrado.
+        - 'pendiente'  : Existe la obligación pero no hay ningún pago registrado.
         - 'parcial'    : Hay abonos registrados pero queda saldo mayor a cero.
         - 'paz_y_salvo': El saldo llegó a cero.
         """
@@ -492,7 +496,7 @@ class EnrollmentService:
         elif tiene_pagos:
             nuevo_estado = "parcial"
         else:
-            nuevo_estado = "sin_abono"
+            nuevo_estado = "pendiente"
 
         self.repo.update_enrollment_status(matricula_id, nuevo_estado)
 
@@ -586,10 +590,13 @@ class EnrollmentService:
         return self.repo.get_all_complementaries(year=year)
 
     def search_students(
-        self, documento: str | None, nombre: str | None
+        self,
+        documento: str | None,
+        nombre: str | None,
+        query: str | None = None,
     ) -> list[StudentInfo]:
         """Busca estudiantes y mapea los resultados crudos a entidades StudentInfo."""
-        raw_results = self.repo.search_students(documento, nombre)
+        raw_results = self.repo.search_students(documento, nombre, query)
         students = []
         for est, gra in raw_results:
             if est.id is None or est.grado_id is None:
@@ -611,9 +618,10 @@ class EnrollmentService:
         documento: str | None,
         nombre: str | None,
         year: int,
+        query: str | None = None,
     ) -> list[EnrollmentBalance]:
         """Busca estudiantes y obtiene su balance consolidado en la capa de servicio."""
-        students = self.search_students(documento, nombre)
+        students = self.search_students(documento, nombre, query)
         balances = []
         for student in students:
             balance = self.get_balance(student.id, year)

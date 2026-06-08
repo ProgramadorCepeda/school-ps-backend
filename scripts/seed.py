@@ -17,6 +17,8 @@ from app.modules.enrollment.infrastructure.models import (
     Matricula,
     ParametrizarMatricula,
     Periodo,
+    Pago,
+    PagoDetalle,
 )
 from app.modules.tuition.infrastructure.models import ParametrizarPension
 
@@ -329,6 +331,75 @@ def seed() -> None:
             ),
         ]
         session.add_all(detalles2)
+        session.flush()
+
+        # Pagos para Estudiante 1 (Juan - Sexto) para respaldar su estado parcial
+        pago_juan = Pago(
+            matricula_id=matricula1.id,
+            codigo_talonario="TAL-J01",
+            monto_total=110000,
+            fecha_pago=datetime(2026, 1, 25),
+            observacion="Abonos iniciales a complementarios",
+        )
+        session.add(pago_juan)
+        session.flush()
+
+        session.add_all(
+            [
+                PagoDetalle(
+                    pago_id=pago_juan.id,
+                    concepto="complementario",
+                    complementario_id=comp_agenda.id,
+                    monto_aplicado=40000,
+                ),
+                PagoDetalle(
+                    pago_id=pago_juan.id,
+                    concepto="complementario",
+                    complementario_id=comp_plataforma.id,
+                    monto_aplicado=70000,
+                ),
+            ]
+        )
+
+        # Pagos para Estudiante 2 (Ana - Décimo) para respaldar su estado paz_y_salvo
+        pago_ana = Pago(
+            matricula_id=matricula2.id,
+            codigo_talonario="TAL-A01",
+            monto_total=1140000,
+            fecha_pago=datetime(2026, 1, 18),
+            observacion="Pago completo de matricula y complementarios",
+        )
+        session.add(pago_ana)
+        session.flush()
+
+        session.add_all(
+            [
+                PagoDetalle(
+                    pago_id=pago_ana.id,
+                    concepto="matricula_base",
+                    complementario_id=None,
+                    monto_aplicado=950000,
+                ),
+                PagoDetalle(
+                    pago_id=pago_ana.id,
+                    concepto="complementario",
+                    complementario_id=comp_seguro.id,
+                    monto_aplicado=120000,
+                ),
+                PagoDetalle(
+                    pago_id=pago_ana.id,
+                    concepto="complementario",
+                    complementario_id=comp_agenda.id,
+                    monto_aplicado=45000,
+                ),
+                PagoDetalle(
+                    pago_id=pago_ana.id,
+                    concepto="complementario",
+                    complementario_id=comp_carnet.id,
+                    monto_aplicado=25000,
+                ),
+            ]
+        )
 
         # Estudiante 3 (Pedro - Segundo): SIN matrícula registrada
         # Se usará para probar el endpoint POST /register
