@@ -13,5 +13,7 @@ class RegisterEnrollment:
         repository = SQLEnrollmentRepository(session)
         self.service = EnrollmentService(repository)
 
-    def execute(self, student_id: int, period_id: int, year: int) -> EnrollmentCreated:
+    def execute(
+        self, student_id: int, period_id: int | None = None, year: int = 2026
+    ) -> EnrollmentCreated:
         return self.service.register_enrollment(student_id, period_id, year)

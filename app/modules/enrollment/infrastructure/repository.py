@@ -155,6 +155,14 @@ class SQLEnrollmentRepository(EnrollmentRepository):
         statement = select(Periodo).where(Periodo.id == period_id)
         return self._session.exec(statement).first() is not None
 
+    def find_active_period_by_year(self, year: int) -> int | None:
+        statement = select(Periodo).where(col(Periodo.estado))
+        periods = self._session.exec(statement).all()
+        for p in periods:
+            if p.periodo_electivo.year == year:
+                return p.id
+        return None
+
     def create_enrollment(
         self,
         para_matricula_id: int,

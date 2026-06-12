@@ -5,7 +5,7 @@ class RegisterEnrollmentRequest(BaseModel):
     """Solicitud para registrar matrícula a un estudiante."""
 
     estudiante_id: int = Field(description="ID del estudiante")
-    periodo_id: int = Field(description="ID del periodo electivo")
+    periodo_id: int | None = Field(default=None, description="ID del periodo electivo")
     anio: int = Field(description="Año de la matrícula")
 
 
@@ -144,7 +144,7 @@ class ManualEnrollmentRequest(BaseModel):
         max_length=100,
         description="Nombre completo del acudiente",
     )
-    periodo_id: int = Field(description="ID del periodo académico")
+    periodo_id: int | None = Field(default=None, description="ID del periodo académico")
     anio: int = Field(description="Año de la matrícula")
 
     @field_validator("documento")

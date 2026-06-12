@@ -18,8 +18,8 @@ class ManualEnrollment:
         nombre: str,
         grado_str: str,
         nombre_acudiente: str,
-        periodo_id: int,
-        anio: int,
+        periodo_id: int | None = None,
+        anio: int = 2026,
     ) -> int:
         return self.service.manual_enrollment(
             documento=documento,

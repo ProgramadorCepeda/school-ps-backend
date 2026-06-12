@@ -91,7 +91,7 @@ class EnrollmentService:
         )
 
     def register_enrollment(
-        self, student_id: int, period_id: int, year: int
+        self, student_id: int, period_id: int | None, year: int
     ) -> EnrollmentCreated:
         """
         Genera la matrícula automáticamente para un estudiante.
@@ -100,9 +100,15 @@ class EnrollmentService:
         2. Asigna complementarios activos con uso_matricula=True
         4. Crea registro Matricula + DetalleMatricula
         """
-        if not self.repo.period_exists(period_id):
-            msg = f"El período académico con ID {period_id} no existe en el sistema"
-            raise ValueError(msg)
+        if period_id is None:
+            period_id = self.repo.find_active_period_by_year(year)
+            if period_id is None:
+                msg = f"No se encontró un período académico activo para el año {year}"
+                raise ValueError(msg)
+        else:
+            if not self.repo.period_exists(period_id):
+                msg = f"El período académico con ID {period_id} no existe en el sistema"
+                raise ValueError(msg)
 
         student = self.repo.get_student_by_id(student_id)
         if student is None:
@@ -563,7 +569,7 @@ class EnrollmentService:
         nombre: str,
         grado_str: str,
         nombre_acudiente: str,
-        period_id: int,
+        period_id: int | None,
         year: int,
     ) -> int:
         grado_id = self.resolve_grade_id(grado_str)

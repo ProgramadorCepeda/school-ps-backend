@@ -71,6 +71,11 @@ class EnrollmentRepository(ABC):
         ...
 
     @abstractmethod
+    def find_active_period_by_year(self, year: int) -> int | None:
+        """Busca el ID del periodo académico activo correspondiente al año dado."""
+        ...
+
+    @abstractmethod
     def create_enrollment(
         self,
         para_matricula_id: int,
