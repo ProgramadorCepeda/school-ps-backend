@@ -61,6 +61,9 @@ class EnrollmentService:
                 raise ValueError(
                     "El id de la matrícula no puede ser nulo cuando existe"
                 )
+            base_paid = self.repo.get_base_paid_amount(matricula_id)
+            base_cost = pending_base + base_paid
+
             total_pending = pending_base + sum(
                 item.valor_pendiente for item in complementary_items
             )
@@ -513,9 +516,13 @@ class EnrollmentService:
         anio: int,
         valor: int,
         estado: str,
+        uso_matricula: bool | None = True,
     ) -> int:
         if tipo_complementario_id is None:
-            tipo_complementario_id = self.repo.get_or_create_matricula_tipo_id()
+            if uso_matricula is False:
+                tipo_complementario_id = self.repo.get_or_create_otros_tipo_id()
+            else:
+                tipo_complementario_id = self.repo.get_or_create_matricula_tipo_id()
         return self.repo.create_complementary(
             nombre=nombre,
             tipo_complementario_id=tipo_complementario_id,

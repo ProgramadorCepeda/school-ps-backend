@@ -19,6 +19,7 @@ class CreateComplementary:
         anio: int,
         valor: int,
         estado: str,
+        uso_matricula: bool | None = True,
     ) -> int:
         return self._service.create_complementary(
             nombre=nombre,
@@ -26,4 +27,5 @@ class CreateComplementary:
             anio=anio,
             valor=valor,
             estado=estado,
+            uso_matricula=uso_matricula,
         )

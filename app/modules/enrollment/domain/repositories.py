@@ -81,6 +81,11 @@ class EnrollmentRepository(ABC):
         ...
 
     @abstractmethod
+    def get_or_create_otros_tipo_id(self) -> int:
+        """Busca o crea el ID del tipo de complementario 'Otros'."""
+        ...
+
+    @abstractmethod
     def create_enrollment(
         self,
         para_matricula_id: int,
@@ -253,6 +258,11 @@ class EnrollmentRepository(ABC):
     @abstractmethod
     def get_total_paid(self, matricula_id: int) -> int:
         """Retorna la suma total de pagos registrados para una matrícula."""
+        ...
+
+    @abstractmethod
+    def get_base_paid_amount(self, matricula_id: int) -> int:
+        """Retorna la suma total de pagos realizados a la matrícula base."""
         ...
 
     @abstractmethod

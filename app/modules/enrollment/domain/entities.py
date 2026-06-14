@@ -91,6 +91,7 @@ class ComplementaryConcept:
     anio: int
     valor: int
     estado_complemento: str
+    uso_matricula: bool = True
 
 
 @dataclass

@@ -191,6 +191,16 @@ class SQLEnrollmentRepository(EnrollmentRepository):
         assert tipo.id is not None
         return tipo.id
 
+    def get_or_create_otros_tipo_id(self) -> int:
+        statement = select(TipoComplementario).where(TipoComplementario.nombre == "Otros")
+        tipo = self._session.exec(statement).first()
+        if tipo is None:
+            tipo = TipoComplementario(nombre="Otros", estado=True)
+            self._session.add(tipo)
+            self._session.flush()
+        assert tipo.id is not None
+        return tipo.id
+
     def create_enrollment(
         self,
         para_matricula_id: int,
@@ -532,6 +542,18 @@ class SQLEnrollmentRepository(EnrollmentRepository):
         results = self._session.exec(statement).all()
         return sum(p.monto_total for p in results)
 
+    def get_base_paid_amount(self, matricula_id: int) -> int:
+        statement = (
+            select(func.sum(PagoDetalle.monto_aplicado))
+            .join(Pago, col(PagoDetalle.pago_id) == col(Pago.id))
+            .where(
+                Pago.matricula_id == matricula_id,
+                PagoDetalle.concepto == "matricula_base",
+            )
+        )
+        result = self._session.exec(statement).first()
+        return result if result is not None else 0
+
     def get_payments(self, matricula_id: int) -> list[Pago]:
         statement = select(Pago).where(Pago.matricula_id == matricula_id)
         return list(self._session.exec(statement).all())
@@ -766,12 +788,39 @@ class SQLEnrollmentRepository(EnrollmentRepository):
     def get_all_complementaries(
         self, year: int | None = None
     ) -> list[ComplementaryConcept]:
+        matricula_tipo_id = self.get_or_create_matricula_tipo_id()
+        otros_tipo_id = self.get_or_create_otros_tipo_id()
+
+        # Valid type IDs: Matricula, sub-types of Matricula, and Otros
+        valid_type_ids = self._session.exec(
+            select(col(TipoComplementario.id)).where(
+                or_(
+                    TipoComplementario.id == matricula_tipo_id,
+                    TipoComplementario.sub_tipo_complementario == matricula_tipo_id,
+                    TipoComplementario.id == otros_tipo_id,
+                )
+            )
+        ).all()
+
+        # Matricula and its sub-types (for uso_matricula flag evaluation)
+        matricula_type_ids = self._session.exec(
+            select(col(TipoComplementario.id)).where(
+                or_(
+                    TipoComplementario.id == matricula_tipo_id,
+                    TipoComplementario.sub_tipo_complementario == matricula_tipo_id,
+                )
+            )
+        ).all()
+        matricula_type_ids_set = set(matricula_type_ids)
+
         statement = select(Complementario).where(
-            Complementario.estado_complemento == "Activo"
+            Complementario.estado_complemento == "Activo",
+            col(Complementario.tipo_complementario_id).in_(valid_type_ids),
         )
         if year is not None:
             statement = statement.where(Complementario.anio == year)
         results = self._session.exec(statement).all()
+
         return [
             ComplementaryConcept(
                 id=comp.id if comp.id is not None else 0,
@@ -779,6 +828,7 @@ class SQLEnrollmentRepository(EnrollmentRepository):
                 anio=comp.anio,
                 valor=comp.valor,
                 estado_complemento=comp.estado_complemento,
+                uso_matricula=(comp.tipo_complementario_id in matricula_type_ids_set),
             )
             for comp in results
         ]
