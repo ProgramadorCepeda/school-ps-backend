@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class CreateTestDetailRequest(BaseModel):
@@ -13,6 +13,14 @@ class CreateTestDetailRequest(BaseModel):
     )
     periodo_id: int = Field(description="ID del periodo")
 
+    @field_validator("tipo_prueba")
+    @classmethod
+    def validate_tipo_prueba(cls, v: str) -> str:
+        allowed = {"saber", "icfes", "simulacro"}
+        if v not in allowed:
+            raise ValueError(f"tipo_prueba must be one of {allowed}")
+        return v
+
 
 class UpdateTestDetailRequest(BaseModel):
     estudiante_id: int = Field(ge=1, description="ID del estudiante")
@@ -26,12 +34,28 @@ class UpdateTestDetailRequest(BaseModel):
     )
     periodo_id: int = Field(description="ID del periodo")
 
+    @field_validator("tipo_prueba")
+    @classmethod
+    def validate_tipo_prueba(cls, v: str) -> str:
+        allowed = {"saber", "icfes", "simulacro"}
+        if v not in allowed:
+            raise ValueError(f"tipo_prueba must be one of {allowed}")
+        return v
+
 
 class MassiveAssignmentRequest(BaseModel):
     grado_id: int
     complementario_id: int
     tipo_prueba: str
     periodo_id: int
+
+    @field_validator("tipo_prueba")
+    @classmethod
+    def validate_tipo_prueba(cls, v: str) -> str:
+        allowed = {"saber", "icfes", "simulacro"}
+        if v not in allowed:
+            raise ValueError(f"tipo_prueba must be one of {allowed}")
+        return v
 
 
 class PaymentRequest(BaseModel):

@@ -103,7 +103,9 @@ class ComplementaryCreateRequest(BaseModel):
     nombre: str = Field(
         max_length=50, description="Nombre del concepto (ej: Banda Marcial)"
     )
-    tipo_complementario_id: int = Field(description="ID del tipo de complementario")
+    tipo_complementario_id: int | None = Field(
+        default=None, description="ID del tipo de complementario"
+    )
     anio: int = Field(description="Año al que aplica este cobro")
     valor: int = Field(gt=0, description="Costo total del concepto")
     estado_complemento: str = Field(max_length=50, description="Estado (ej: Activo)")

@@ -180,6 +180,17 @@ class SQLEnrollmentRepository(EnrollmentRepository):
             if p.periodo_electivo.year == year:
                 return p.id
         return None
+
+    def get_or_create_matricula_tipo_id(self) -> int:
+        statement = select(TipoComplementario).where(TipoComplementario.nombre == "Matricula")
+        tipo = self._session.exec(statement).first()
+        if tipo is None:
+            tipo = TipoComplementario(nombre="Matricula", estado=True)
+            self._session.add(tipo)
+            self._session.flush()
+        assert tipo.id is not None
+        return tipo.id
+
     def create_enrollment(
         self,
         para_matricula_id: int,
@@ -218,6 +229,53 @@ class SQLEnrollmentRepository(EnrollmentRepository):
             self._session.flush()
             if detalle.id is not None:
                 detail_ids.append(detalle.id)
+
+        # Auto-create Pension record in the same transaction
+        from app.modules.tuition.infrastructure.models import ParametrizarPension, Pension
+
+        para_mat = self._session.get(ParametrizarMatricula, para_matricula_id)
+        if para_mat is None:
+            raise ValueError(f"ParametrizarMatricula con ID {para_matricula_id} no existe")
+
+        student = self._session.get(Estudiante, student_id)
+        if student is None:
+            raise ValueError(f"Estudiante con ID {student_id} no existe")
+
+        grado_id = student.grado_id if student.grado_id is not None else para_mat.grado_id
+        anio = para_mat.anio
+
+        pension_param_stmt = select(ParametrizarPension).where(
+            ParametrizarPension.grado_id == grado_id,
+            ParametrizarPension.anio == anio
+        )
+        para_pension = self._session.exec(pension_param_stmt).first()
+        if para_pension is None:
+            para_pension = ParametrizarPension(
+                grado_id=grado_id,
+                anio=anio,
+                valor=0
+            )
+            self._session.add(para_pension)
+            self._session.flush()
+
+        assert para_pension.id is not None
+
+        pension_stmt = select(Pension).where(
+            Pension.estudiante_id == student_id,
+            Pension.para_pension_id == para_pension.id
+        )
+        existing_pension = self._session.exec(pension_stmt).first()
+        if not existing_pension:
+            pension_record = Pension(
+                para_pension_id=para_pension.id,
+                estudiante_id=student_id,
+                grado_id=grado_id,
+                valor_total=para_pension.valor,
+                fecha_registro=datetime.now(),
+                estado_pension=False,
+            )
+            self._session.add(pension_record)
+            self._session.flush()
 
         self._session.commit()
         return matricula.id, detail_ids

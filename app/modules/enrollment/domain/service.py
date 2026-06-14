@@ -509,11 +509,13 @@ class EnrollmentService:
     def create_complementary(
         self,
         nombre: str,
-        tipo_complementario_id: int,
+        tipo_complementario_id: int | None,
         anio: int,
         valor: int,
         estado: str,
     ) -> int:
+        if tipo_complementario_id is None:
+            tipo_complementario_id = self.repo.get_or_create_matricula_tipo_id()
         return self.repo.create_complementary(
             nombre=nombre,
             tipo_complementario_id=tipo_complementario_id,

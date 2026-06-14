@@ -76,6 +76,11 @@ class EnrollmentRepository(ABC):
         ...
 
     @abstractmethod
+    def get_or_create_matricula_tipo_id(self) -> int:
+        """Busca o crea el ID del tipo de complementario 'Matricula'."""
+        ...
+
+    @abstractmethod
     def create_enrollment(
         self,
         para_matricula_id: int,
