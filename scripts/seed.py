@@ -15,10 +15,11 @@ from app.modules.enrollment.infrastructure.models import (
     Estudiante,
     Grado,
     Matricula,
-    ParametrizarMatricula,
-    Periodo,
     Pago,
     PagoDetalle,
+    ParametrizarMatricula,
+    Periodo,
+    TipoComplementario,
 )
 from app.modules.tuition.infrastructure.models import ParametrizarPension
 
@@ -192,34 +193,40 @@ def seed() -> None:
         assert pension_segundo.id is not None
         assert pension_sexto_2025.id is not None
 
+        # === TIPOS COMPLEMENTARIOS ===
+        tipo_matricula = TipoComplementario(nombre="Matricula", estado=True)
+        session.add(tipo_matricula)
+        session.flush()
+        assert tipo_matricula.id is not None
+
         # === COMPLEMENTARIOS ===
         comp_seguro = Complementario(
-            tipo_complementario="Seguro Estudiantil",
+            nombre="Seguro Estudiantil",
+            tipo_complementario_id=tipo_matricula.id,
             anio=2026,
             valor=120000,
             estado_complemento="Activo",
-            uso_matricula=True,
         )
         comp_agenda = Complementario(
-            tipo_complementario="Agenda Escolar",
+            nombre="Agenda Escolar",
+            tipo_complementario_id=tipo_matricula.id,
             anio=2026,
             valor=45000,
             estado_complemento="Activo",
-            uso_matricula=True,
         )
         comp_carnet = Complementario(
-            tipo_complementario="Carnet Estudiantil",
+            nombre="Carnet Estudiantil",
+            tipo_complementario_id=tipo_matricula.id,
             anio=2026,
             valor=25000,
             estado_complemento="Activo",
-            uso_matricula=True,
         )
         comp_plataforma = Complementario(
-            tipo_complementario="Plataforma Digital",
+            nombre="Plataforma Digital",
+            tipo_complementario_id=tipo_matricula.id,
             anio=2026,
             valor=80000,
             estado_complemento="Activo",
-            uso_matricula=True,
         )
         session.add_all([comp_seguro, comp_agenda, comp_carnet, comp_plataforma])
         session.flush()
@@ -228,6 +235,65 @@ def seed() -> None:
         assert comp_agenda.id is not None
         assert comp_carnet.id is not None
         assert comp_plataforma.id is not None
+
+        # === TIPOS COMPLEMENTARIOS: ESCUELAS DE FORMACIÓN ===
+        tipo_escuelas_formacion = TipoComplementario(
+            nombre="Escuelas de Formacion", estado=True
+        )
+        session.add(tipo_escuelas_formacion)
+        session.flush()
+        assert tipo_escuelas_formacion.id is not None
+
+        tipo_baloncesto = TipoComplementario(
+            nombre="Baloncesto",
+            estado=True,
+            sub_tipo_complementario=tipo_escuelas_formacion.id,
+        )
+        tipo_ajedrez = TipoComplementario(
+            nombre="Ajedrez",
+            estado=True,
+            sub_tipo_complementario=tipo_escuelas_formacion.id,
+        )
+        tipo_natacion = TipoComplementario(
+            nombre="Natacion",
+            estado=True,
+            sub_tipo_complementario=tipo_escuelas_formacion.id,
+        )
+        session.add_all([tipo_baloncesto, tipo_ajedrez, tipo_natacion])
+        session.flush()
+
+        assert tipo_baloncesto.id is not None
+        assert tipo_ajedrez.id is not None
+        assert tipo_natacion.id is not None
+
+        # === COMPLEMENTARIOS: ESCUELAS DE FORMACIÓN ===
+        comp_baloncesto = Complementario(
+            nombre="Escuela de Baloncesto",
+            tipo_complementario_id=tipo_baloncesto.id,
+            anio=2026,
+            valor=60000,
+            estado_complemento="Activo",
+        )
+        comp_ajedrez = Complementario(
+            nombre="Escuela de Ajedrez",
+            tipo_complementario_id=tipo_ajedrez.id,
+            anio=2026,
+            valor=50000,
+            estado_complemento="Activo",
+        )
+        comp_natacion = Complementario(
+            nombre="Escuela de Natacion",
+            tipo_complementario_id=tipo_natacion.id,
+            anio=2026,
+            valor=70000,
+            estado_complemento="Activo",
+        )
+        session.add_all([comp_baloncesto, comp_ajedrez, comp_natacion])
+        session.flush()
+
+        assert comp_baloncesto.id is not None
+        assert comp_ajedrez.id is not None
+        assert comp_natacion.id is not None
 
         # === MATRÍCULAS ===
         # Estudiante 1 (Juan - Sexto): matrícula con pendientes parciales
@@ -344,18 +410,18 @@ def seed() -> None:
         session.add(pago_juan)
         session.flush()
         assert pago_juan.id is not None
-        pago_juan_id: int = pago_juan.id
+
 
         session.add_all(
             [
                 PagoDetalle(
-                    pago_id=pago_juan_id,
+                    pago_id=pago_juan.id,
                     concepto="complementario",
                     complementario_id=comp_agenda.id,
                     monto_aplicado=40000,
                 ),
                 PagoDetalle(
-                    pago_id=pago_juan_id,
+                    pago_id=pago_juan.id,
                     concepto="complementario",
                     complementario_id=comp_plataforma.id,
                     monto_aplicado=70000,
@@ -374,30 +440,30 @@ def seed() -> None:
         session.add(pago_ana)
         session.flush()
         assert pago_ana.id is not None
-        pago_ana_id: int = pago_ana.id
+
 
         session.add_all(
             [
                 PagoDetalle(
-                    pago_id=pago_ana_id,
+                    pago_id=pago_ana.id,
                     concepto="matricula_base",
                     complementario_id=None,
                     monto_aplicado=950000,
                 ),
                 PagoDetalle(
-                    pago_id=pago_ana_id,
+                    pago_id=pago_ana.id,
                     concepto="complementario",
                     complementario_id=comp_seguro.id,
                     monto_aplicado=120000,
                 ),
                 PagoDetalle(
-                    pago_id=pago_ana_id,
+                    pago_id=pago_ana.id,
                     concepto="complementario",
                     complementario_id=comp_agenda.id,
                     monto_aplicado=45000,
                 ),
                 PagoDetalle(
-                    pago_id=pago_ana_id,
+                    pago_id=pago_ana.id,
                     concepto="complementario",
                     complementario_id=comp_carnet.id,
                     monto_aplicado=25000,
@@ -418,7 +484,11 @@ def seed() -> None:
         print(f"     * ID {estudiante1.id}: Juan (Sexto) - Matricula con pendientes")
         print(f"     * ID {estudiante2.id}: Ana (Decimo) - Matricula al dia")
         print(f"     * ID {estudiante3.id}: Pedro (Segundo) - Sin matricula")
-        print("   - 4 complementarios")
+        print("   - 4 complementarios de matricula")
+        print(
+            "   - 3 complementarios de escuelas de formacion "
+            "(Baloncesto, Ajedrez, Natacion)"
+        )
         print("   - 2 matriculas con detalles")
         print(f"   - 1 periodo (ID: {periodo.id})")
         print()
