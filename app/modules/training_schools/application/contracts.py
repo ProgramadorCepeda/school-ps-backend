@@ -59,7 +59,9 @@ class EnrollmentDataService(ABC):
         pass
 
     @abstractmethod
-    async def tipo_complementario_has_children_or_concepts(self, tipo_id: int) -> bool:
+    async def tipo_complementario_has_children_or_concepts(
+        self, tipo_id: int
+    ) -> bool:
         pass
 
     @abstractmethod
