@@ -10,22 +10,26 @@ from app.modules import router
 from app.modules.enrollment.infrastructure.models import Grado
 
 # Import all model modules to register them in SQLModel metadata
-import app.modules.auth.infrastructure.models
-import app.modules.cafeteria.infrastructure.models
-import app.modules.chess.infrastructure.models
-import app.modules.classroom.infrastructure.models
-import app.modules.classroom_holder.infrastructure.models
-import app.modules.enrollment.infrastructure.models
-import app.modules.inventory.infrastructure.models
+from app.modules.auth.infrastructure import models as auth_models  # noqa: F401
+from app.modules.cafeteria.infrastructure import models as cafeteria_models  # noqa: F401
+from app.modules.chess.infrastructure import models as chess_models  # noqa: F401
+from app.modules.classroom.infrastructure import models as classroom_models  # noqa: F401
+from app.modules.classroom_holder.infrastructure import (
+    models as classroom_holder_models,  # noqa: F401
+)
+from app.modules.enrollment.infrastructure import models as enrollment_models  # noqa: F401
+from app.modules.inventory.infrastructure import models as inventory_models  # noqa: F401
 
 try:
-    import app.modules.peace_safe.infrastructure.models
+    from app.modules.peace_safe.infrastructure import models as peace_safe_models  # noqa: F401
 except ImportError:
     pass
-import app.modules.principal.infrastructure.models
-import app.modules.tests.infrastructure.models
-import app.modules.training_schools.infrastructure.models
-import app.modules.tuition.infrastructure.models
+from app.modules.principal.infrastructure import models as principal_models  # noqa: F401
+from app.modules.tests.infrastructure import models as tests_models  # noqa: F401
+from app.modules.training_schools.infrastructure import (
+    models as training_schools_models,  # noqa: F401
+)
+from app.modules.tuition.infrastructure import models as tuition_models  # noqa: F401
 
 settings = get_settings()
 

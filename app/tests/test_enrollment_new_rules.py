@@ -4,7 +4,7 @@ from fastapi import status
 from fastapi.testclient import TestClient
 from sqlalchemy import event
 from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine, select
+from sqlmodel import Session, SQLModel, create_engine
 
 from app.core.db import get_session
 from app.main import app
@@ -13,13 +13,10 @@ from app.modules.enrollment.infrastructure.models import (
     Complementario,
     Estudiante,
     Grado,
-    Matricula,
     ParametrizarMatricula,
     Periodo,
     TipoComplementario,
-    DetalleMatricula,
 )
-from app.modules.tuition.infrastructure.models import ParametrizarPension
 
 test_engine = create_engine(
     "sqlite://",
@@ -104,7 +101,9 @@ def test_modified_enrollment_base_cost_in_balance(session, client):
     matricula_id = data["matricula_id"]
 
     # 3. Check initial balance
-    balance_resp = client.get(f"/api/v1/enrollment/students/{student.id}/balance?year=2026")
+    balance_resp = client.get(
+        f"/api/v1/enrollment/students/{student.id}/balance?year=2026"
+    )
     assert balance_resp.status_code == 200
     balance_data = balance_resp.json()
     assert balance_data["costo_base_matricula"] == 850000
@@ -115,11 +114,15 @@ def test_modified_enrollment_base_cost_in_balance(session, client):
         "motivo": "Buen rendimiento",
         "descuento_base": 150000,
     }
-    modify_resp = client.put(f"/api/v1/enrollment/students/{matricula_id}/matricula", json=modify_payload)
+    modify_resp = client.put(
+        f"/api/v1/enrollment/students/{matricula_id}/matricula", json=modify_payload
+    )
     assert modify_resp.status_code == 200
 
     # 5. Check balance again, costo_base_matricula should be 700,000 (850k - 150k discount)
-    balance_resp = client.get(f"/api/v1/enrollment/students/{student.id}/balance?year=2026")
+    balance_resp = client.get(
+        f"/api/v1/enrollment/students/{student.id}/balance?year=2026"
+    )
     balance_data = balance_resp.json()
     assert balance_data["costo_base_matricula"] == 700000
     assert balance_data["pendiente_base"] == 700000
@@ -128,9 +131,7 @@ def test_modified_enrollment_base_cost_in_balance(session, client):
     # 6. Make a partial payment to base cost, say 200,000
     pay_payload = {
         "matricula_id": matricula_id,
-        "asignaciones": [
-            {"concepto": "matricula_base", "monto": 200000}
-        ],
+        "asignaciones": [{"concepto": "matricula_base", "monto": 200000}],
         "codigo_talonario": "TAL-TEST-100",
         "observacion": "Abono base",
     }
@@ -138,7 +139,9 @@ def test_modified_enrollment_base_cost_in_balance(session, client):
     assert pay_resp.status_code == 201
 
     # 7. Check balance again. base_cost should still be 700,000, and base_paid should be 200,000, pending_base 500,000.
-    balance_resp = client.get(f"/api/v1/enrollment/students/{student.id}/balance?year=2026")
+    balance_resp = client.get(
+        f"/api/v1/enrollment/students/{student.id}/balance?year=2026"
+    )
     balance_data = balance_resp.json()
     assert balance_data["costo_base_matricula"] == 700000
     assert balance_data["pendiente_base"] == 500000

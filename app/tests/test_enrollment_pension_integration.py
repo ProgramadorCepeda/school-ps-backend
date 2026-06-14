@@ -13,7 +13,6 @@ from app.modules.enrollment.infrastructure.models import (
     Complementario,
     Estudiante,
     Grado,
-    Matricula,
     ParametrizarMatricula,
     Periodo,
     TipoComplementario,
@@ -104,7 +103,9 @@ def test_enrollment_creates_pension_success(session, client):
     assert response.status_code == status.HTTP_201_CREATED
 
     # 3. Verify that the Pension record was auto-created
-    pension_records = session.exec(select(Pension).where(Pension.estudiante_id == student.id)).all()
+    pension_records = session.exec(
+        select(Pension).where(Pension.estudiante_id == student.id)
+    ).all()
     assert len(pension_records) == 1
     pension = pension_records[0]
     assert pension.grado_id == grado.id
@@ -164,15 +165,16 @@ def test_enrollment_creates_pension_default_parametrization(session, client):
     # 3. Verify ParametrizarPension was auto-seeded with valor=0
     param_pens = session.exec(
         select(ParametrizarPension).where(
-            ParametrizarPension.grado_id == grado.id,
-            ParametrizarPension.anio == 2026
+            ParametrizarPension.grado_id == grado.id, ParametrizarPension.anio == 2026
         )
     ).all()
     assert len(param_pens) == 1
     assert param_pens[0].valor == 0
 
     # 4. Verify Pension record was auto-created with valor_total=0
-    pension_records = session.exec(select(Pension).where(Pension.estudiante_id == student.id)).all()
+    pension_records = session.exec(
+        select(Pension).where(Pension.estudiante_id == student.id)
+    ).all()
     assert len(pension_records) == 1
     pension = pension_records[0]
     assert pension.grado_id == grado.id
@@ -198,7 +200,7 @@ def test_create_complementary_default_type(session, client):
     comp = session.get(Complementario, comp_id)
     assert comp is not None
     assert comp.nombre == "Seguro Contra Accidentes"
-    
+
     tipo = session.get(TipoComplementario, comp.tipo_complementario_id)
     assert tipo is not None
     assert tipo.nombre == "Matricula"

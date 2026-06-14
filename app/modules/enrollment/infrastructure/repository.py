@@ -182,7 +182,9 @@ class SQLEnrollmentRepository(EnrollmentRepository):
         return None
 
     def get_or_create_matricula_tipo_id(self) -> int:
-        statement = select(TipoComplementario).where(TipoComplementario.nombre == "Matricula")
+        statement = select(TipoComplementario).where(
+            TipoComplementario.nombre == "Matricula"
+        )
         tipo = self._session.exec(statement).first()
         if tipo is None:
             tipo = TipoComplementario(nombre="Matricula", estado=True)
@@ -192,7 +194,9 @@ class SQLEnrollmentRepository(EnrollmentRepository):
         return tipo.id
 
     def get_or_create_otros_tipo_id(self) -> int:
-        statement = select(TipoComplementario).where(TipoComplementario.nombre == "Otros")
+        statement = select(TipoComplementario).where(
+            TipoComplementario.nombre == "Otros"
+        )
         tipo = self._session.exec(statement).first()
         if tipo is None:
             tipo = TipoComplementario(nombre="Otros", estado=True)
@@ -241,30 +245,32 @@ class SQLEnrollmentRepository(EnrollmentRepository):
                 detail_ids.append(detalle.id)
 
         # Auto-create Pension record in the same transaction
-        from app.modules.tuition.infrastructure.models import ParametrizarPension, Pension
+        from app.modules.tuition.infrastructure.models import (
+            ParametrizarPension,
+            Pension,
+        )
 
         para_mat = self._session.get(ParametrizarMatricula, para_matricula_id)
         if para_mat is None:
-            raise ValueError(f"ParametrizarMatricula con ID {para_matricula_id} no existe")
+            raise ValueError(
+                f"ParametrizarMatricula con ID {para_matricula_id} no existe"
+            )
 
         student = self._session.get(Estudiante, student_id)
         if student is None:
             raise ValueError(f"Estudiante con ID {student_id} no existe")
 
-        grado_id = student.grado_id if student.grado_id is not None else para_mat.grado_id
+        grado_id = (
+            student.grado_id if student.grado_id is not None else para_mat.grado_id
+        )
         anio = para_mat.anio
 
         pension_param_stmt = select(ParametrizarPension).where(
-            ParametrizarPension.grado_id == grado_id,
-            ParametrizarPension.anio == anio
+            ParametrizarPension.grado_id == grado_id, ParametrizarPension.anio == anio
         )
         para_pension = self._session.exec(pension_param_stmt).first()
         if para_pension is None:
-            para_pension = ParametrizarPension(
-                grado_id=grado_id,
-                anio=anio,
-                valor=0
-            )
+            para_pension = ParametrizarPension(grado_id=grado_id, anio=anio, valor=0)
             self._session.add(para_pension)
             self._session.flush()
 
@@ -272,7 +278,7 @@ class SQLEnrollmentRepository(EnrollmentRepository):
 
         pension_stmt = select(Pension).where(
             Pension.estudiante_id == student_id,
-            Pension.para_pension_id == para_pension.id
+            Pension.para_pension_id == para_pension.id,
         )
         existing_pension = self._session.exec(pension_stmt).first()
         if not existing_pension:
