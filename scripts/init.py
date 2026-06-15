@@ -4,7 +4,7 @@ from sqlmodel import Session, select
 
 from app.core.db import engine
 from app.modules.auth.infrastructure.models import Usuario
-from app.modules.classroom.infrastructure.models import Pupitre
+from app.modules.classroom.infrastructure.models import DetallePupitre
 from app.modules.enrollment.infrastructure.models import (
     Acudiente,
     Complementario,
@@ -238,10 +238,10 @@ def main():
         session.add_all(estudiantes)
         session.flush()
 
-        pupitres: list[Pupitre] = [
-            Pupitre(
+        pupitres: list[DetallePupitre] = [
+            DetallePupitre(
                 estudiante_id=estudiante.id or 1,
-                estado_pupitre=True,
+                estado="Pendiente",
                 observacion=None,
             )
             for estudiante in estudiantes
