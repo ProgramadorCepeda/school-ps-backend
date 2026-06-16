@@ -516,13 +516,9 @@ class EnrollmentService:
         anio: int,
         valor: int,
         estado: str,
-        uso_matricula: bool | None = True,
     ) -> int:
         if tipo_complementario_id is None:
-            if uso_matricula is False:
-                tipo_complementario_id = self.repo.get_or_create_otros_tipo_id()
-            else:
-                tipo_complementario_id = self.repo.get_or_create_matricula_tipo_id()
+            tipo_complementario_id = self.repo.get_or_create_matricula_tipo_id()
         return self.repo.create_complementary(
             nombre=nombre,
             tipo_complementario_id=tipo_complementario_id,

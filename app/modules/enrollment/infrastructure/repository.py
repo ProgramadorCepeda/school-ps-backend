@@ -142,7 +142,9 @@ class SQLEnrollmentRepository(EnrollmentRepository):
 
     def get_active_complementaries(self, year: int) -> list[tuple[int, str, int]]:
         matricula_type = self._session.exec(
-            select(TipoComplementario).where(TipoComplementario.nombre == "Matricula")
+            select(TipoComplementario).where(
+                func.lower(TipoComplementario.nombre) == "matricula"
+            )
         ).first()
 
         if not matricula_type or matricula_type.id is None:
@@ -183,11 +185,11 @@ class SQLEnrollmentRepository(EnrollmentRepository):
 
     def get_or_create_matricula_tipo_id(self) -> int:
         statement = select(TipoComplementario).where(
-            TipoComplementario.nombre == "Matricula"
+            func.lower(TipoComplementario.nombre) == "matricula"
         )
         tipo = self._session.exec(statement).first()
         if tipo is None:
-            tipo = TipoComplementario(nombre="Matricula", estado=True)
+            tipo = TipoComplementario(nombre="matricula", estado=True)
             self._session.add(tipo)
             self._session.flush()
         assert tipo.id is not None
@@ -808,17 +810,6 @@ class SQLEnrollmentRepository(EnrollmentRepository):
             )
         ).all()
 
-        # Matricula and its sub-types (for uso_matricula flag evaluation)
-        matricula_type_ids = self._session.exec(
-            select(col(TipoComplementario.id)).where(
-                or_(
-                    TipoComplementario.id == matricula_tipo_id,
-                    TipoComplementario.sub_tipo_complementario == matricula_tipo_id,
-                )
-            )
-        ).all()
-        matricula_type_ids_set = set(matricula_type_ids)
-
         statement = select(Complementario).where(
             Complementario.estado_complemento == "Activo",
             col(Complementario.tipo_complementario_id).in_(valid_type_ids),
@@ -834,7 +825,6 @@ class SQLEnrollmentRepository(EnrollmentRepository):
                 anio=comp.anio,
                 valor=comp.valor,
                 estado_complemento=comp.estado_complemento,
-                uso_matricula=(comp.tipo_complementario_id in matricula_type_ids_set),
             )
             for comp in results
         ]

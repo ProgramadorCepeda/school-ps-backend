@@ -203,39 +203,43 @@ def test_filter_complementaries_catalog(session, client):
 
 
 def test_uso_matricula_flag_and_otros_fallback(session, client):
-    # 1. Create a complementary with uso_matricula=True (default behavior)
+    # 1. Create Otros type
+    tipo_otros = TipoComplementario(nombre="Otros", estado=True)
+    session.add(tipo_otros)
+    session.flush()
+
+    # 2. Create a complementary without tipo_complementario_id (default behavior: links to "Matricula")
     payload_true = {
         "nombre": "Carnet Estudiantil",
         "anio": 2026,
         "valor": 15000,
         "estado_complemento": "Activo",
-        "uso_matricula": True,
     }
     resp_true = client.post("/api/v1/enrollment/complementary", json=payload_true)
     assert resp_true.status_code == 201
     comp_true_id = resp_true.json()["complementario_id"]
 
-    # 2. Create a complementary with uso_matricula=False
+    # 3. Create a complementary with tipo_complementario_id pointing to "Otros"
     payload_false = {
         "nombre": "Servicio de Catering Especial",
+        "tipo_complementario_id": tipo_otros.id,
         "anio": 2026,
         "valor": 500000,
         "estado_complemento": "Activo",
-        "uso_matricula": False,
     }
     resp_false = client.post("/api/v1/enrollment/complementary", json=payload_false)
     assert resp_false.status_code == 201
     comp_false_id = resp_false.json()["complementario_id"]
 
-    # 3. Check catalog: Carnet should have uso_matricula=True, Catering should have uso_matricula=False
+    # 4. Check catalog: Both should be returned
     cat_resp = client.get("/api/v1/enrollment/complementary?year=2026")
     catalog = cat_resp.json()
 
     carnet = next(c for c in catalog if c["id"] == comp_true_id)
     catering = next(c for c in catalog if c["id"] == comp_false_id)
 
-    assert carnet["uso_matricula"] is True
-    assert catering["uso_matricula"] is False
+    assert carnet["tipo_complementario"] == "Carnet Estudiantil"
+    assert catering["tipo_complementario"] == "Servicio de Catering Especial"
 
     # 4. Verify that new enrollments auto-assign only the one with uso_matricula=True
     grado = Grado(nombre="Primero")

@@ -109,10 +109,6 @@ class ComplementaryCreateRequest(BaseModel):
     anio: int = Field(description="Año al que aplica este cobro")
     valor: int = Field(gt=0, description="Costo total del concepto")
     estado_complemento: str = Field(max_length=50, description="Estado (ej: Activo)")
-    uso_matricula: bool | None = Field(
-        default=True,
-        description="Indica si se cobra automáticamente en matrículas nuevas",
-    )
 
 
 class AssignComplementaryRequest(BaseModel):

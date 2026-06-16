@@ -203,4 +203,4 @@ def test_create_complementary_default_type(session, client):
 
     tipo = session.get(TipoComplementario, comp.tipo_complementario_id)
     assert tipo is not None
-    assert tipo.nombre == "Matricula"
+    assert tipo.nombre.lower() == "matricula"

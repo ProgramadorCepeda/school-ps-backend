@@ -338,7 +338,6 @@ async def create_complementary(
         anio=request.anio,
         valor=request.valor,
         estado=request.estado_complemento,
-        uso_matricula=request.uso_matricula,
     )
     return {
         "mensaje": "Complementario creado exitosamente",
@@ -543,7 +542,6 @@ async def get_complementaries(
             anio=item.anio,
             valor=item.valor,
             estado_complemento=item.estado_complemento,
-            uso_matricula=item.uso_matricula,
         )
         for item in results
     ]
