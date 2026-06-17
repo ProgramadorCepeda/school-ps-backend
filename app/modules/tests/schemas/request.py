@@ -65,3 +65,9 @@ class PaymentRequest(BaseModel):
 class ComplementaryUpdateBody(BaseModel):
     nombre: str
     valor: int
+
+
+class ComplementaryCreateBody(BaseModel):
+    nombre: str
+    valor: int
+    anio: int
