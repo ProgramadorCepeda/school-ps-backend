@@ -3,6 +3,9 @@ from app.modules.enrollment.domain.service import EnrollmentService
 from app.modules.enrollment.infrastructure.repository import (
     SQLEnrollmentRepository,
 )
+from app.modules.tuition.infrastructure.enrollment_adapter import (
+    TuitionEnrollmentAdapter,
+)
 
 
 class ManualEnrollment:
@@ -10,7 +13,8 @@ class ManualEnrollment:
 
     def __init__(self, session: SessionDep) -> None:
         repository = SQLEnrollmentRepository(session)
-        self.service = EnrollmentService(repository)
+        tuition_service = TuitionEnrollmentAdapter(session)
+        self.service = EnrollmentService(repository, tuition_service)
 
     def execute(
         self,

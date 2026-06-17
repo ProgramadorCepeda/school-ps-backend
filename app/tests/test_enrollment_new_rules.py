@@ -202,46 +202,26 @@ def test_filter_complementaries_catalog(session, client):
     assert "Prueba Saber 11 Externo" not in names
 
 
-def test_uso_matricula_flag_and_otros_fallback(session, client):
-    # 1. Create Otros type
-    tipo_otros = TipoComplementario(nombre="Otros", estado=True)
-    session.add(tipo_otros)
-    session.flush()
-
-    # 2. Create a complementary without tipo_complementario_id (default behavior: links to "Matricula")
-    payload_true = {
+def test_create_complementary_default_behavior(session, client):
+    # 1. Create a complementary without specifying type (default behavior: links to "Matricula")
+    payload = {
         "nombre": "Carnet Estudiantil",
         "anio": 2026,
         "valor": 15000,
         "estado_complemento": "Activo",
     }
-    resp_true = client.post("/api/v1/enrollment/complementary", json=payload_true)
-    assert resp_true.status_code == 201
-    comp_true_id = resp_true.json()["complementario_id"]
+    resp = client.post("/api/v1/enrollment/complementary", json=payload)
+    assert resp.status_code == 201
+    comp_id = resp.json()["complementario_id"]
 
-    # 3. Create a complementary with tipo_complementario_id pointing to "Otros"
-    payload_false = {
-        "nombre": "Servicio de Catering Especial",
-        "tipo_complementario_id": tipo_otros.id,
-        "anio": 2026,
-        "valor": 500000,
-        "estado_complemento": "Activo",
-    }
-    resp_false = client.post("/api/v1/enrollment/complementary", json=payload_false)
-    assert resp_false.status_code == 201
-    comp_false_id = resp_false.json()["complementario_id"]
-
-    # 4. Check catalog: Both should be returned
+    # 2. Check catalog: Carnet should be returned
     cat_resp = client.get("/api/v1/enrollment/complementary?year=2026")
     catalog = cat_resp.json()
 
-    carnet = next(c for c in catalog if c["id"] == comp_true_id)
-    catering = next(c for c in catalog if c["id"] == comp_false_id)
-
+    carnet = next(c for c in catalog if c["id"] == comp_id)
     assert carnet["tipo_complementario"] == "Carnet Estudiantil"
-    assert catering["tipo_complementario"] == "Servicio de Catering Especial"
 
-    # 4. Verify that new enrollments auto-assign only the one with uso_matricula=True
+    # 3. Verify that new enrollments auto-assign it
     grado = Grado(nombre="Primero")
     session.add(grado)
     session.commit()
@@ -279,7 +259,6 @@ def test_uso_matricula_flag_and_otros_fallback(session, client):
     session.add(param_mat)
     session.commit()
 
-    # Register new enrollment
     reg_payload = {
         "estudiante_id": student.id,
         "periodo_id": periodo.id,
@@ -289,9 +268,8 @@ def test_uso_matricula_flag_and_otros_fallback(session, client):
     assert reg_resp.status_code == status.HTTP_201_CREATED
     reg_data = reg_resp.json()
 
-    # The enrollment total value should only include the tuition base (600k) + Carnet (15k) = 615k.
-    # It should NOT include Catering (500k).
+    # The enrollment total value should include the tuition base (600k) + Carnet (15k) = 615k.
     assert reg_data["valor_total"] == 615000
     assert reg_data["total_complementarios"] == 15000
     assert len(reg_data["complementarios"]) == 1
-    assert reg_data["complementarios"][0]["complementario_id"] == comp_true_id
+    assert reg_data["complementarios"][0]["complementario_id"] == comp_id

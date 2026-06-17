@@ -11,6 +11,7 @@ from app.modules.enrollment.domain.entities import (
     StudentInfo,
 )
 from app.modules.enrollment.domain.repositories import EnrollmentRepository
+from app.modules.enrollment.application.contracts import TuitionServiceContract
 from app.modules.enrollment.schemas.request import ModifyEnrollmentRequest
 from app.modules.enrollment.schemas.response import (
     GradeResponse,
@@ -22,8 +23,13 @@ from app.modules.enrollment.schemas.response import (
 class EnrollmentService:
     """Servicio de dominio que calcula el balance de matrícula."""
 
-    def __init__(self, repository: EnrollmentRepository) -> None:
+    def __init__(
+        self,
+        repository: EnrollmentRepository,
+        tuition_service: TuitionServiceContract | None = None,
+    ) -> None:
         self.repo = repository
+        self.tuition_service = tuition_service
 
     def get_balance(self, student_id: int, year: int) -> EnrollmentBalance:
         """
@@ -169,6 +175,14 @@ class EnrollmentService:
             base_cost=base_cost,
             complementary_details=comp_details,
         )
+
+        # Auto-create Pension record via tuition service
+        if self.tuition_service is not None:
+            self.tuition_service.create_pension_account(
+                student_id=student_id,
+                grade_id=student.grado_id,
+                year=year,
+            )
 
         for entity, d_id in zip(comp_entities, detail_ids):
             entity.detalle_id = d_id
